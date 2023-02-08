@@ -38,7 +38,7 @@ class WolvicWebExtensionRuntime(
             val activeSession = SessionStore.get().activeSession
             val session: Session = SessionStore.get().createWebExtensionSession(activeSession.isPrivateMode);
             session.setParentSession(activeSession)
-            session.uaMode = WSessionSettings.USER_AGENT_MODE_DESKTOP
+            session.setUaMode(WSessionSettings.USER_AGENT_MODE_DESKTOP, true)
             val engineSession = WolvicEngineSession(session)
             (context as WidgetManagerDelegate).windows.onTabSelect(session)
             return webExtensionDelegate?.onToggleActionPopup(extension, engineSession, action)
@@ -208,8 +208,10 @@ class WolvicWebExtensionRuntime(
             onError: (Throwable) -> Unit
     ) {
         runtime.webExtensionController.enable(extension, source.id).then({
-            webExtensionDelegate?.onEnabled(extension)
-            onSuccess(extension)
+            if (it != null) {
+                webExtensionDelegate?.onEnabled(it)
+                onSuccess(it)
+            }
             WResult.create<Void>()
         }, { throwable ->
             onError(throwable)
@@ -227,8 +229,10 @@ class WolvicWebExtensionRuntime(
             onError: (Throwable) -> Unit
     ) {
         runtime.webExtensionController.disable(extension, source.id).then({
-            webExtensionDelegate?.onDisabled(extension)
-            onSuccess(extension)
+            if (it != null) {
+                webExtensionDelegate?.onDisabled(it)
+                onSuccess(it)
+            }
             WResult.create<Void>()
         }, { throwable ->
             onError(throwable)
