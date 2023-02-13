@@ -24,18 +24,49 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="Title" />
+            tools:text="ColorPicker Dialog" />
+
+        <com.skydoves.colorpickerview.ColorPickerView
+            android:id="@+id/colorPickerView"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:layout_marginTop="10dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/title"
+            app:palette="@drawable/palette"
+            app:selector="@drawable/wheel" />
+
+        <com.skydoves.colorpickerview.sliders.AlphaSlideBar
+            android:id="@+id/alphaSlideBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="15dp"
+            app:borderColor_AlphaSlideBar="@android:color/darker_gray"
+            app:borderSize_AlphaSlideBar="5"
+            app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
+            app:layout_constraintTop_toBottomOf="@id/colorPickerView"
+            app:selector_AlphaSlideBar="@drawable/wheel" />
+
+        <com.skydoves.colorpickerview.sliders.BrightnessSlideBar
+            android:id="@+id/brightnessSlide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="15dp"
+            app:borderSize_BrightnessSlider="5"
+            app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
+            app:layout_constraintTop_toBottomOf="@id/alphaSlideBar"
+            app:selector_BrightnessSlider="@drawable/wheel" />
 
         <LinearLayout
             android:id="@+id/buttonsLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="10dp"
             android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/colorPickerView">
 
             <Button
                 android:id="@+id/cancelButton"
