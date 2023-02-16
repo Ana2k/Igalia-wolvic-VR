@@ -26,7 +26,7 @@
     <string name="settings_privacy_choose_search_engine_reset">Resetar as configurações do Motor de busca</string>
     <string name="settings_privacy_choose_search_engine_description">Escolher seu Motor de busca preferido.</string>
     <string name="settings_privacy_policy_popups_title_v1">Exceções para Pop-Ups</string>
-    <string name="settings_privacy_policy_popups_description">Você pode especificar quais sites são permitidos para abrir janelas pop-up</string>
+    <string name="settings_privacy_policy_popups_description">Você pode especificar quais sites são permitidos a abrir janelas pop-up</string>
     <string name="settings_privacy_policy_webxr_title">Permissões de Realidade Virtual</string>
     <string name="pop_up_site_switch_allow">Permitir</string>
     <string name="pop_up_site_switch_block">Bloquear</string>
@@ -103,7 +103,7 @@
     <string name="history_context_remove_bookmarks">Remover do Favoritos</string>
     <string name="settings_privacy_policy_webxr_description">Os sites a seguir bloqueiam a WebXR API de acessar seu dispositivo RV.</string>
     <string name="settings_privacy_policy_webxr_empty_description">Quando você abre um site que utiliza WebXR API, você pode abrir uma janela \"dialog\" que permite bloquear WebXR naquele site.</string>
-    <string name="settings_privacy_policy_webxr_reset">Redefinir sites não permitidos acessar dispositivos RV.</string>
+    <string name="settings_privacy_policy_webxr_reset">Redefinir sites não autorizados à acessar dispositivos RV.</string>
     <string name="settings_privacy_policy_tracking_description">Você desligou proteções nestes sites.</string>
     <string name="settings_privacy_policy_tracking_reset">Redefinir as exceções de Proteção de Rastreamento Aprimorada.</string>
     <string name="settings_privacy_policy_login_exceptions_title">Exceções de Login</string>
@@ -132,6 +132,7 @@
     <string name="settings_language_norwegian">Norueguês</string>
     <string name="settings_language_norwegian_bokmaal">Norueguês</string>
     <string name="settings_language_norwegian_nynorsk">Norueguês</string>
+    <string name="settings_language_portuguese">Português</string>
     <string name="settings_display">Monitor</string>
     <string name="settings_report_speech_data">Relatório de Dados de Fala</string>
     <string name="settings_send_your_feedback">Envie Seu Feedback</string>
@@ -697,4 +698,36 @@
 \n
 \nOs conteúdos e elementos que compõem este aplicativo foram implementados e/ou desenvolvidos pela IGALIA sob licenças open source, estando protegidos, sem limitações, pelas leis de propriedade intelectual e industrial do Reino de Espanha e pelos Tratados e Acordos internacionais que possam resultado da aplicação.</string>
     <string name="tray_status_right_controller">Controle direito: %1$s</string>
+    <string name="settings_language_portuguese_br">Português (Brasil)</string>
+    <string name="notifications_empty">Sua Lista de Notificações está Vazia</string>
+    <string name="notifications_loading">Carregando Notificações</string>
+    <string name="notifications_title">Notificações</string>
+    <string name="addons_experimental_section_title">Experimental</string>
+    <string name="web_apps_title">Aplicativos Web</string>
+    <string name="download_context_copy_to_content_uri">Compartilhar com outros aplicativos</string>
+    <string name="web_apps_empty">Sua lista de Aplicativos Web está vazia</string>
+    <string name="web_apps_loading">Carregando Aplicativos Web</string>
+    <string name="web_apps_dialog_title">Instalar Aplicativo Web</string>
+    <string name="web_apps_description">Clique no botão Salvar Aplicativo Web... quando você estiver em uma página para adicioná-lo aos seus Aplicativos Web.</string>
+    <string name="web_apps_saved_notification">Aplicativo Web adicionado!</string>
+    <string name="download_addon_install_blocked">Instalação de complemento local bloqueada</string>
+    <string name="download_copy_to_content_uri_confirm_title">Copiar arquivo\?</string>
+    <string name="download_copy_to_content_uri_confirm_body">Isso criará uma cópia desse arquivo na pasta do sistema Downloads, onde ele pode ser acessado por outros aplicativos.
+\n
+\nDeseja continuar\?</string>
+    <string name="download_copy_to_content_uri_success_body">Este arquivo foi copiado com sucesso e está disponível na pasta Downloads.</string>
+    <string name="download_copy_to_content_uri_error_body_v1">Ocorreu um erro ao copiar %1$s</string>
+    <string name="download_addon_install_confirm_install">Instalar</string>
+    <string name="upload_button">Carregar</string>
+    <string name="web_apps_dialog_title_parameter">Instalar %1$s</string>
+    <string name="web_apps_dialog_cancel">Cancelar</string>
+    <string name="web_apps_dialog_install">Instalar</string>
+    <string name="download_addon_install">Instalar complemento</string>
+    <string name="download_addon_install_cancel">Cancelar</string>
+    <string name="download_addon_install_blocked_body">Permita a instalação de Complemento local nas Opções do Desenvolvedor para continuar.</string>
+    <string name="download_copy_to_content_uri_error_body">Ocorreu um erro ao copiar o arquivo baixado.</string>
+    <string name="download_copy_to_content_uri_success_title">Copiado com sucesso</string>
+    <string name="download_copy_to_content_uri_error_title">Erro de cópia</string>
+    <string name="web_apps_dialog_body">Deseja instalar o seguinte Aplicativo Web\? Ele estará disponível na Biblioteca.</string>
+    <string name="hamburger_menu_save_web_app">Salvar aplicativo Web…</string>
 </resources>

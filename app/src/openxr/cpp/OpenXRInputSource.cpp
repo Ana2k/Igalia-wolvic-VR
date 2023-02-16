@@ -632,7 +632,7 @@ void OpenXRInputSource::EmulateControllerFromHand(device::RenderMode renderMode,
                             ringPinching, 1.0);
 }
 
-void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpace, const vrb::Matrix& head, float offsetY, device::RenderMode renderMode, ControllerDelegate& delegate)
+void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpace, const vrb::Matrix& head, const vrb::Vector& offsets, device::RenderMode renderMode, ControllerDelegate& delegate)
 {
     if (!mActiveMapping) {
       delegate.SetEnabled(mIndex, false);
@@ -677,8 +677,14 @@ void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpac
       return;
     }
 
-    // Adjust to local is app is using stageSpace (e.g. HVR), otherwise offset will be 0.
-    poseLocation.pose.position.y += offsetY;
+    // HVR: adjust to local if app is using stageSpace.
+    // Meta: adjust the position of the controllers which is not totally accurate.
+    auto adjustPoseLocation = [&poseLocation](const vrb::Vector& offset) {
+        poseLocation.pose.position.x += offset.x();
+        poseLocation.pose.position.y += offset.y();
+        poseLocation.pose.position.z += offset.z();
+    };
+    adjustPoseLocation(offsets);
 
     delegate.SetEnabled(mIndex, true);
     delegate.SetModelVisible(mIndex, true);
@@ -704,8 +710,7 @@ void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpac
     poseLocation = { XR_TYPE_SPACE_LOCATION };
     CHECK_XRCMD(GetPoseState(mGripAction, mGripSpace, localSpace, frameState,  isPoseActive, poseLocation));
     if (isPoseActive) {
-        // Adjust to local is app is using stageSpace (e.g. HVR), otherwise offset will be 0.
-        poseLocation.pose.position.y += offsetY;
+        adjustPoseLocation(offsets);
         auto gripTransform = XrPoseToMatrix(poseLocation.pose);
         bool hasPosition = poseLocation.locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT;
         delegate.SetImmersiveBeamTransform(mIndex, hasPosition ? gripTransform : pointerTransform);

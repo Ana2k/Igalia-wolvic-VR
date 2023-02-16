@@ -98,7 +98,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
@@ -205,7 +205,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     private float mCurrentCylinderDensity = 0;
     private boolean mHideWebXRIntersitial = false;
     private FragmentController mFragmentController;
-    private Hashtable<Integer, WidgetPlacement> mPendingNativeWidgetUpdates = new Hashtable<>();
+    private LinkedHashMap<Integer, WidgetPlacement> mPendingNativeWidgetUpdates = new LinkedHashMap<>();
     private ScheduledThreadPoolExecutor mPendingNativeWidgetUpdatesExecutor = new ScheduledThreadPoolExecutor(1);
     private ScheduledFuture<?> mNativeWidgetUpdatesTask = null;
 
@@ -278,8 +278,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         registerReceiver(mCrashReceiver, intentFilter, BuildConfig.APPLICATION_ID + "." + getString(R.string.app_permission_name), null);
 
         mLastGesture = NoGesture;
-        super.onCreate(savedInstanceState);
-
         mWidgetUpdateListeners = new LinkedList<>();
         mPermissionListeners = new LinkedList<>();
         mFocusChangeListeners = new LinkedList<>();
@@ -288,10 +286,11 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         mBackHandlers = new LinkedList<>();
         mBrightnessQueue = new LinkedList<>();
         mCurrentBrightness = Pair.create(null, 1.0f);
-
         mWidgets = new ConcurrentHashMap<>();
-        mWidgetContainer = new FrameLayout(this);
 
+        super.onCreate(savedInstanceState);
+
+        mWidgetContainer = new FrameLayout(this);
         runtime.setFragmentManager(mFragmentController.getSupportFragmentManager(), mWidgetContainer);
 
         mPermissionDelegate = new PermissionDelegate(this, this);

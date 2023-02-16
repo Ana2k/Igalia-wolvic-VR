@@ -885,12 +885,15 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
 
   // Update controllers
   if (m.input && m.controller) {
+    vrb::Vector offsets = vrb::Vector::Zero();
 #if defined(HVR)
-    float offsetY = -m.firstPose->position.y;
-#else
-    float offsetY = 0;
+    offsets.y() = -m.firstPose->position.y;
+#elif defined(OCULUSVR)
+    offsets.x() = -0.025;
+    offsets.y() = -0.05;
+    offsets.z() = 0.05;
 #endif
-    m.input->Update(frameState, m.localSpace, head, offsetY, m.renderMode, *m.controller);
+    m.input->Update(frameState, m.localSpace, head, offsets, m.renderMode, *m.controller);
   }
 }
 
