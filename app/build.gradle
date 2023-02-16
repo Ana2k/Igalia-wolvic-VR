@@ -555,6 +555,9 @@ dependencies {
     // DiskLRUCache used to cache snapshots
     implementation deps.disklrucache.disklrucache
 
+    // Color picker library
+    implementation deps.colorpicker
+
     // Testing
     androidTestImplementation deps.atsl.runner
     androidTestImplementation deps.espresso.core

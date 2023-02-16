@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/promptColorLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -30,33 +31,12 @@
             android:id="@+id/colorPickerView"
             android:layout_width="300dp"
             android:layout_height="300dp"
-            android:layout_marginTop="10dp"
+            app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title"
-            app:palette="@drawable/palette"
-            app:selector="@drawable/wheel" />
+            app:layout_constraintTop_toBottomOf="@id/title" />
 
-        <com.skydoves.colorpickerview.sliders.AlphaSlideBar
-            android:id="@+id/alphaSlideBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="15dp"
-            app:borderColor_AlphaSlideBar="@android:color/darker_gray"
-            app:borderSize_AlphaSlideBar="5"
-            app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
-            app:layout_constraintTop_toBottomOf="@id/colorPickerView"
-            app:selector_AlphaSlideBar="@drawable/wheel" />
-
-        <com.skydoves.colorpickerview.sliders.BrightnessSlideBar
-            android:id="@+id/brightnessSlide"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="15dp"
-            app:borderSize_BrightnessSlider="5"
-            app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
-            app:layout_constraintTop_toBottomOf="@id/alphaSlideBar"
-            app:selector_BrightnessSlider="@drawable/wheel" />
+        <!--    <com.-->
 
         <LinearLayout
             android:id="@+id/buttonsLayout"
@@ -65,8 +45,7 @@
             android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/colorPickerView">
+            app:layout_constraintStart_toStartOf="parent">
 
             <Button
                 android:id="@+id/cancelButton"
