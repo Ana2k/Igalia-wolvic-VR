@@ -18,7 +18,7 @@ import com.skydoves.colorpickerview.sliders.AlphaSlideBar;
 import com.skydoves.colorpickerview.sliders.BrightnessSlideBar;
 
 public class ColorPromptWidget extends PromptWidget {
-//current gradation of logs 0-> 6,7,8,9,10,11,12
+
     private AudioEngine mAudio;
     private Button mCancelButton, mOkButton;
 
@@ -44,32 +44,14 @@ public class ColorPromptWidget extends PromptWidget {
     }
 
     protected void initialize(Context aContext) {
-        Log.d("HARICP","line 6");
         inflate(aContext, R.layout.prompt_color, this);
-        Log.d("HARICP","line 7");
 
         //implementing ColorPickerView
         new ColorPickerView.Builder(getContext()).build();
-        Log.d("HARICP","line 8");
         ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
-        Log.d("HARICP","line 9");
 
-
-//        final AlphaSlideBar alphaSlideBar = findViewById(R.id.alphaSlideBar);
-        Log.d("HARICP","line 10");
-        //banaya hi nhi hai attatch kr rhi ho :) Maza aa gaya Ana Hehe :) T_T
-        //dukh dard kasht peeda.....
-//        colorPickerView.attachAlphaSlider(alphaSlideBar);
-        Log.d("HARICP","line 11");
-//        final BrightnessSlideBar brightnessSlideBar = findViewById(R.id.brightnessSlideBar);
-        Log.d("HARICP","line 12");
-
-//        colorPickerView.attachBrightnessSlider(brightnessSlideBar);
-        Log.d("HARICP","line 13");
-        colorPickerView.setHsvPaletteDrawable();
-        Log.d("HARICP","line 14");
-        colorPickerView.setLifecycleOwner((LifecycleOwner) this);
-        Log.d("HARICP","line 15");
+        final AlphaSlideBar alphaSlideBar = findViewById(R.id.alphaSlideBar);
+        colorPickerView.attachAlphaSlider(alphaSlideBar);
 
         mAudio = AudioEngine.fromContext(aContext);
         Log.d("HARICP","line 16");
