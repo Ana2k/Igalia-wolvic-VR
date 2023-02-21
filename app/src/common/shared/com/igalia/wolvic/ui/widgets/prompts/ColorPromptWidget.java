@@ -54,46 +54,29 @@ public class ColorPromptWidget extends PromptWidget {
         colorPickerView.attachAlphaSlider(alphaSlideBar);
 
         mAudio = AudioEngine.fromContext(aContext);
-        Log.d("HARICP","line 16");
         mLayout = findViewById(R.id.layout);
-        Log.d("HARICP","line 17");
         mTitle = findViewById(R.id.title);
-        Log.d("HARICP","line 18");
         mCancelButton = findViewById(R.id.cancelButton);
-        Log.d("HARICP","line 19");
         mOkButton = findViewById(R.id.okButton);
-        Log.d("HARICP","line 20");
+
         mCancelButton.setOnClickListener(v -> {
-            Log.d("HARICP","line 21");
             if (mAudio != null) {
-                Log.d("HARICP","line 22");
                 mAudio.playSound(AudioEngine.Sound.CLICK);
-                Log.d("HARICP","line 23");
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
-                Log.d("HARICP","line 24");
                 mPromptDelegate.dismiss();
-                Log.d("HARICP","line 25");
             }
-            Log.d("HARICP","line 26");
             hide(REMOVE_WIDGET);
-            Log.d("HARICP","line 27");
         });
 
         mOkButton.setOnClickListener(v -> {
-            Log.d("HARICP","line 28");
             if (mAudio != null) {
-                Log.d("HARICP","line 29");
                 mAudio.playSound(AudioEngine.Sound.CLICK);
-                Log.d("HARICP","line 30");
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
-                Log.d("HARICP","line 31");
                 ((ColorPromptDelegate) mPromptDelegate).confirm("#FFBF00");
-                Log.d("HARICP","line 32");
             }
             hide(REMOVE_WIDGET);
-            Log.d("HARICP","line 33");
         });
     }
 

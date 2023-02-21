@@ -29,8 +29,8 @@
 
         <com.skydoves.colorpickerview.ColorPickerView
             android:id="@+id/colorPickerView"
-            android:layout_width="450dp"
-            android:layout_height="450dp"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
             app:layout_constraintBottom_toTopOf="@id/buttonsLayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
