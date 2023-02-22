@@ -23,6 +23,10 @@ namespace crow {
     static PFN_xrDestroyHandTrackerEXT sXrDestroyHandTrackerEXT;
     static PFN_xrLocateHandJointsEXT sXrLocateHandJointsEXT;
     static PFN_xrGetHandMeshFB sXrGetHandMeshFB;
+
+    static PFN_xrPerfSettingsSetPerformanceLevelEXT sXrPerfSettingsSetPerformanceLevelEXT;
+    static PFN_xrEnumerateDisplayRefreshRatesFB sXrEnumerateDisplayRefreshRatesFB;
+    static PFN_xrRequestDisplayRefreshRateFB sXrRequestDisplayRefreshRateFB;
   private:
      static std::unordered_set<std::string> sSupportedExtensions;
   };

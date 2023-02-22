@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <unistd.h>
+#include <sstream>
 #include <string.h>
 
 #include "VRBrowser.h"
@@ -98,6 +99,7 @@ struct DeviceDelegateOpenXR::State {
   std::function<void()> controllersReadyCallback;
   std::optional<XrPosef> firstPose;
   bool mHandTrackingSupported = false;
+  std::vector<float> refreshRates;
 
   bool IsPositionTrackingSupported() {
       CHECK(system != XR_NULL_SYSTEM_ID);
@@ -167,6 +169,12 @@ struct DeviceDelegateOpenXR::State {
         if (OpenXRExtensions::IsExtensionSupported(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME)) {
             extensions.push_back(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
         }
+    }
+    if (OpenXRExtensions::IsExtensionSupported(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME)) {
+        extensions.push_back(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME);
+    }
+    if (OpenXRExtensions::IsExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME)) {
+        extensions.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
     }
 #ifdef OCULUSVR
     if (OpenXRExtensions::IsExtensionSupported(XR_KHR_COMPOSITION_LAYER_EQUIRECT2_EXTENSION_NAME)) {
@@ -291,6 +299,26 @@ struct DeviceDelegateOpenXR::State {
     immersiveDisplay->SetEyeResolution(viewConfig.front().recommendedImageRectWidth, viewConfig.front().recommendedImageRectHeight);
     immersiveDisplay->SetSittingToStandingTransform(vrb::Matrix::Translation(kAverageHeight));
     immersiveDisplay->CompleteEnumeration();
+  }
+
+  void InitializeRefreshRates() {
+    CHECK(session);
+    if (!OpenXRExtensions::IsExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME))
+      return;
+
+    uint32_t displayRefreshRateCount = 0;
+    CHECK_XRCMD(OpenXRExtensions::sXrEnumerateDisplayRefreshRatesFB(session, 0, &displayRefreshRateCount, nullptr));
+    CHECK(displayRefreshRateCount > 0);
+    refreshRates.resize(displayRefreshRateCount);
+    CHECK_XRCMD(OpenXRExtensions::sXrEnumerateDisplayRefreshRatesFB(session, displayRefreshRateCount, &displayRefreshRateCount, refreshRates.data()));
+
+    {
+      std::stringstream ratesStream;
+      for (auto rate : refreshRates)
+          ratesStream << rate << ", ";
+      std::string result = ratesStream.str().substr(0, ratesStream.str().size() - 2);
+      VRB_DEBUG("OpenXR device supports %u refresh rates: %s", displayRefreshRateCount, result.c_str());
+    }
   }
 
   XrSwapchainCreateInfo GetSwapChainCreateInfo(uint32_t w = 0, uint32_t h = 0) {
@@ -521,9 +549,53 @@ struct DeviceDelegateOpenXR::State {
   }
 
   void UpdateClockLevels() {
-    // TODO
+      if (!OpenXRExtensions::IsExtensionSupported(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME))
+          return;
+
+      if (renderMode == device::RenderMode::StandAlone && minCPULevel == device::CPULevel::Normal) {
+          CHECK_XRCMD(OpenXRExtensions::sXrPerfSettingsSetPerformanceLevelEXT(session, XR_PERF_SETTINGS_DOMAIN_CPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_LOW_EXT));
+          CHECK_XRCMD(OpenXRExtensions::sXrPerfSettingsSetPerformanceLevelEXT(session, XR_PERF_SETTINGS_DOMAIN_GPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_LOW_EXT));
+      } else {
+          CHECK_XRCMD(OpenXRExtensions::sXrPerfSettingsSetPerformanceLevelEXT(session, XR_PERF_SETTINGS_DOMAIN_CPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT));
+          CHECK_XRCMD(OpenXRExtensions::sXrPerfSettingsSetPerformanceLevelEXT(session, XR_PERF_SETTINGS_DOMAIN_GPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_HIGH_EXT));
+      }
   }
 
+  void UpdateDisplayRefreshRate() {
+    if (!OpenXRExtensions::IsExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME))
+      return;
+
+    float suggestedRefreshRate = 0.0;
+    switch (deviceType) {
+      case device::OculusQuest2:
+      case device::MetaQuestPro:
+      // PicoXR default is 72hz, but has an experimental setting to set it to 90hz. If the setting
+      // is disabled we'll select 72hz which is the only one advertised by OpenXR in that case.
+      case device::PicoXR:
+        suggestedRefreshRate = 90.0;
+        break;
+      case device::OculusQuest:
+        suggestedRefreshRate = 72.0;
+        break;
+      default:
+        suggestedRefreshRate = 60.0;
+        break;
+    }
+
+    // Selects the first available refresh rate equal or higher than the desired one. Note that
+    // OpenXR returns the refresh rates sorted from lowest to highest.
+    auto selectValidRefreshRate = [refreshRates = this->refreshRates](const float suggestedRefreshRate) {
+      auto it = std::find_if(refreshRates.begin(), refreshRates.end(),
+   [&suggestedRefreshRate](const float& refreshRate) { return refreshRate >= suggestedRefreshRate;});
+      if (it == refreshRates.end())
+        return refreshRates.back();
+      return *it;
+    };
+
+    float selectedRefreshRate = selectValidRefreshRate(suggestedRefreshRate);
+    VRB_DEBUG("OpenXR setting refresh rate to %.0fhz", selectedRefreshRate);
+    CHECK_XRCMD(OpenXRExtensions::sXrRequestDisplayRefreshRateFB(session, selectedRefreshRate));
+  }
 
   void Shutdown() {
     // Release swapChains
@@ -606,6 +678,9 @@ DeviceDelegateOpenXR::SetRenderMode(const device::RenderMode aMode) {
     XrSwapchainCreateInfo info = m.GetSwapChainCreateInfo();
     eyeSwapchain->InitFBO(render, m.session, info, m.GetFBOAttributes());
   }
+
+  m.UpdateClockLevels();
+  m.UpdateDisplayRefreshRate();
 
   // Reset reorient when exiting or entering immersive
   m.reorientMatrix = vrb::Matrix::Identity();
@@ -728,6 +803,7 @@ DeviceDelegateOpenXR::ProcessEvents() {
       }
       case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
         m.firstPose = std::nullopt;
+        VRB_DEBUG("OpenXR: reference space changed. User recentered the view?");
         break;
       default: {
         VRB_DEBUG("OpenXR ignoring event type %d", ev->type);
@@ -786,6 +862,7 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
   XrSpaceLocation location {XR_TYPE_SPACE_LOCATION};
   CHECK_XRCMD(xrLocateSpace(m.viewSpace, m.localSpace, m.predictedDisplayTime, &location));
   m.predictedPose = location.pose;
+  bool reoriented = !m.firstPose;
   if (!m.firstPose && location.pose.position.y != 0.0) {
     m.firstPose = location.pose;
   }
@@ -894,6 +971,12 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
     offsets.z() = 0.05;
 #endif
     m.input->Update(frameState, m.localSpace, head, offsets, m.renderMode, *m.controller);
+  }
+
+  if (reoriented && m.renderMode == device::RenderMode::StandAlone) {
+      if (mReorientClient)
+          mReorientClient->OnReorient();
+      m.reorientMatrix = DeviceUtils::CalculateReorientationMatrix(head, kAverageHeight);
   }
 }
 
@@ -1203,6 +1286,7 @@ DeviceDelegateOpenXR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
   m.UpdateSpaces();
   m.InitializeViews();
   m.InitializeImmersiveDisplay();
+  m.InitializeRefreshRates();
 #if OCULUSVR
   // See InitialiceDeviceType(). We overwrite the system name so that we load the proper input
   // mapping for the Quest Pro, as it incorrectly advertises itself as "Oculus Quest2"
@@ -1227,6 +1311,9 @@ DeviceDelegateOpenXR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
   if (m.equirectLayer) {
     m.equirectLayer->Init(m.javaContext->env, m.session, context);
   }
+
+  m.UpdateClockLevels();
+  m.UpdateDisplayRefreshRate();
 }
 
 void
