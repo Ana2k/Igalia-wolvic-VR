@@ -24,23 +24,17 @@ public class ColorPromptWidget extends PromptWidget {
 
     public ColorPromptWidget(Context aContext) {
         super(aContext);
-        Log.d("HARICP","line 0");
         initialize(aContext);
-        Log.d("HARICP","line 1");
     }
 
     public ColorPromptWidget(Context aContext, AttributeSet aAttrs) {
         super(aContext, aAttrs);
-        Log.d("HARICP","line 2");
         initialize(aContext);
-        Log.d("HARICP","line 3");
     }
 
     public ColorPromptWidget(Context aContext, AttributeSet aAttrs, int aDefStyle) {
         super(aContext, aAttrs, aDefStyle);
-        Log.d("HARICP","line 4");
         initialize(aContext);
-        Log.d("HARICP","line 5");
     }
 
     protected void initialize(Context aContext) {
@@ -74,6 +68,7 @@ public class ColorPromptWidget extends PromptWidget {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
+
                 ((ColorPromptDelegate) mPromptDelegate).confirm("#FFBF00");
             }
             hide(REMOVE_WIDGET);
