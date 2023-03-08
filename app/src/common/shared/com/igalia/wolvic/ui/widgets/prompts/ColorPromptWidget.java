@@ -48,7 +48,7 @@ public class ColorPromptWidget extends PromptWidget {
         //check the colorPicker whether it is running the way we expect it to.
         new ColorPickerView.Builder(getContext()).build();
         ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
-//        colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
+        colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
 
         mAudio = AudioEngine.fromContext(aContext);
         mLayout = findViewById(R.id.layout);
