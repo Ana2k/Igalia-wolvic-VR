@@ -19,6 +19,7 @@
 #include "WidgetMover.h"
 #include "WidgetResizer.h"
 #include "WidgetPlacement.h"
+#include "Assertions.h"
 #include "Cylinder.h"
 #include "Quad.h"
 #include "VRBrowser.h"
@@ -64,23 +65,11 @@
 #include "OVR_Platform.h"
 #endif
 
-// TODO: refactor some of the utils of OpenXRHelpers.h to another class as they aren't really
-// OpenXR helpers, but general purpouse utils
-#define STRINGIFY(x) #x
-#define FILE_AND_LINE __FILE__ ":" STRINGIFY(__LINE__)
-#define ASSERT(exp)                         \
-{                                           \
-  if (!(exp)) {                             \
-    throw std::logic_error(FILE_AND_LINE);  \
-  }                                         \
-}
-
 #define ASSERT_ON_RENDER_THREAD(X)                                          \
   if (m.context && !m.context->IsOnRenderThread()) {                        \
     VRB_ERROR("Function: '%s' not called on render thread.", __FUNCTION__); \
     return X;                                                               \
   }
-
 
 #define INJECT_SKYBOX_PATH "skybox"
 
@@ -93,6 +82,11 @@ const int GestureSwipeRight = 1;
 
 const float kScrollFactor = 20.0f; // Just picked what fell right.
 const double kHoverRate = 1.0 / 10.0;
+
+// 'azure' color, for active pinch gesture while on hand mode
+const vrb::Color kPointerColorSelected = vrb::Color(0.32f, 0.56f, 0.88f);
+// How big is the pointer target while in hand-tracking mode
+const float kPointerPinchSize = 5.0;
 
 class SurfaceObserver;
 typedef std::shared_ptr<SurfaceObserver> SurfaceObserverPtr;
@@ -501,16 +495,36 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
     }
 
     if (controller.pointer) {
-      controller.pointer->SetVisible(hitWidget.get() != nullptr);
+      controller.pointer->SetVisible(hitWidget.get() != nullptr && controller.hasAim);
       controller.pointer->SetHitWidget(hitWidget);
-      if (hitWidget) {
+      if (hitWidget && controller.hasAim) {
         vrb::Matrix translation = vrb::Matrix::Translation(hitPoint);
         vrb::Matrix localRotation = vrb::Matrix::Rotation(hitNormal);
         vrb::Matrix reorient = rootTransparent->GetTransform();
         controller.pointer->SetTransform(reorient.AfineInverse().PostMultiply(translation).PostMultiply(localRotation));
-        controller.pointer->SetScale(hitPoint, device->GetHeadTransform());
+
+        const float scale = (hitPoint - device->GetHeadTransform().MultiplyPosition(vrb::Vector(0.0f, 0.0f, 0.0f))).Magnitude();
+        if (controller.mode == ControllerMode::Device) {
+          controller.pointer->SetScale(scale);
+          controller.pointer->SetPointerColor(VRBrowser::GetPointerColor());
+        } else {
+          controller.pointer->SetScale(scale + kPointerPinchSize - controller.pinchFactor * kPointerPinchSize);
+          if (controller.pinchFactor >= 1.0f)
+            controller.pointer->SetPointerColor(kPointerColorSelected);
+          else
+            controller.pointer->SetPointerColor(VRBrowser::GetPointerColor());
+        }
       }
     }
+
+    if (controller.handMeshToggle)
+      controller.handMeshToggle->ToggleAll(controller.mode == ControllerMode::Hand);
+
+    if (controller.beamToggle)
+      controller.beamToggle->ToggleAll(controller.mode == ControllerMode::Device && controller.hasAim);
+
+    if (controller.modelToggle)
+      controller.modelToggle->ToggleAll(controller.mode == ControllerMode::Device);
 
     if (controller.focused && movingWidget && movingWidget->IsMoving(controller.index)) {
       if (!pressed && wasPressed) {

@@ -39,7 +39,7 @@ const char* const kOnDismissWebXRInterstitialSignature = "()V";
 const char* const kOnWebXRRenderStateChangeName = "onWebXRRenderStateChange";
 const char* const kOnWebXRRenderStateChangeSignature = "(Z)V";
 const char* const kRenderPointerLayerName = "renderPointerLayer";
-const char* const kRenderPointerLayerSignature = "(Landroid/view/Surface;J)V";
+const char* const kRenderPointerLayerSignature = "(Landroid/view/Surface;IJ)V";
 const char* const kGetStorageAbsolutePathName = "getStorageAbsolutePath";
 const char* const kGetStorageAbsolutePathSignature = "()Ljava/lang/String;";
 const char* const kIsOverrideEnvPathEnabledName = "isOverrideEnvPathEnabled";
@@ -64,6 +64,8 @@ const char* const kAppendAppNotesToCrashReport = "appendAppNotesToCrashReport";
 const char* const kAppendAppNotesToCrashReportSignature = "(Ljava/lang/String;)V";
 const char* const kUpdateControllerBatteryLevelsName = "updateControllerBatteryLevels";
 const char* const kUpdateControllerBatteryLevelsSignature = "(II)V";
+const char* const kOnAppFocusChangedName = "onAppFocusChanged";
+const char* const kOnAppFocusChangedSignature = "(Z)V";
 
 JNIEnv* sEnv = nullptr;
 jclass sBrowserClass = nullptr;
@@ -95,6 +97,7 @@ jmethodID sOnAppLink = nullptr;
 jmethodID sDisableLayers = nullptr;
 jmethodID sAppendAppNotesToCrashReport = nullptr;
 jmethodID sUpdateControllerBatteryLevels = nullptr;
+jmethodID sOnAppFocusChanged = nullptr;
 }
 
 namespace crow {
@@ -141,6 +144,7 @@ VRBrowser::InitializeJava(JNIEnv* aEnv, jobject aActivity) {
   sDisableLayers = FindJNIMethodID(sEnv, sBrowserClass, kDisableLayers, kDisableLayersSignature);
   sAppendAppNotesToCrashReport = FindJNIMethodID(sEnv, sBrowserClass, kAppendAppNotesToCrashReport, kAppendAppNotesToCrashReportSignature);
   sUpdateControllerBatteryLevels = FindJNIMethodID(sEnv, sBrowserClass, kUpdateControllerBatteryLevelsName, kUpdateControllerBatteryLevelsSignature);
+  sOnAppFocusChanged = FindJNIMethodID(sEnv, sBrowserClass, kOnAppFocusChangedName, kOnAppFocusChangedSignature);
 }
 
 JNIEnv * VRBrowser::Env()
@@ -170,6 +174,7 @@ VRBrowser::ShutdownJava() {
   sHandleMoveEnd = nullptr;
   sHandleBack = nullptr;
   sRegisterExternalContext = nullptr;
+  sOnAppFocusChanged = nullptr;
   sOnEnterWebXR = nullptr;
   sOnExitWebXR = nullptr;
   sOnDismissWebXRInterstitial = nullptr;
@@ -295,13 +300,13 @@ void VRBrowser::OnWebXRRenderStateChange(const bool aRendering) {
 }
 
 void
-VRBrowser::RenderPointerLayer(jobject aSurface, const std::function<void()>& aFirstCompositeCallback) {
+VRBrowser::RenderPointerLayer(jobject aSurface, const int32_t color, const std::function<void()>& aFirstCompositeCallback) {
   if (!ValidateMethodID(sEnv, sActivity, sRenderPointerLayer, __FUNCTION__)) { return; }
   jlong callback = 0;
   if (aFirstCompositeCallback) {
     callback = reinterpret_cast<jlong>(new std::function<void()>(aFirstCompositeCallback));
   }
-  sEnv->CallVoidMethod(sActivity, sRenderPointerLayer, aSurface, callback);
+  sEnv->CallVoidMethod(sActivity, sRenderPointerLayer, aSurface, color, callback);
   CheckJNIException(sEnv, __FUNCTION__);
 }
 
@@ -421,5 +426,11 @@ VRBrowser::UpdateControllerBatteryLevels(const jint aLeftBatteryLevel, const jin
   CheckJNIException(sEnv, __FUNCTION__);
 }
 
+void
+VRBrowser::OnAppFocusChanged(const bool aIsFocused) {
+  if (!ValidateMethodID(sEnv, sActivity, sOnAppFocusChanged, __FUNCTION__)) { return; }
+  sEnv->CallVoidMethod(sActivity, sOnAppFocusChanged, (jboolean) aIsFocused);
+  CheckJNIException(sEnv, __FUNCTION__);
+}
 
 } // namespace crow

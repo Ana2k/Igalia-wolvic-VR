@@ -49,6 +49,7 @@ import androidx.lifecycle.ViewModelStoreOwner;
 
 import com.igalia.wolvic.audio.AudioEngine;
 import com.igalia.wolvic.browser.Accounts;
+import com.igalia.wolvic.browser.Media;
 import com.igalia.wolvic.browser.PermissionDelegate;
 import com.igalia.wolvic.browser.SettingsStore;
 import com.igalia.wolvic.browser.api.WRuntime;
@@ -208,6 +209,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     private LinkedHashMap<Integer, WidgetPlacement> mPendingNativeWidgetUpdates = new LinkedHashMap<>();
     private ScheduledThreadPoolExecutor mPendingNativeWidgetUpdatesExecutor = new ScheduledThreadPoolExecutor(1);
     private ScheduledFuture<?> mNativeWidgetUpdatesTask = null;
+    private Media mPrevActiveMedia = null;
 
     private boolean callOnAudioManager(Consumer<AudioManager> fn) {
         if (mAudioManager == null) {
@@ -1247,7 +1249,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Keep
     @SuppressWarnings("unused")
-    void renderPointerLayer(final Surface aSurface, final long aNativeCallback) {
+    void renderPointerLayer(final Surface aSurface, int color, final long aNativeCallback) {
         runOnUiThread(() -> {
             try {
                 Canvas canvas = aSurface.lockHardwareCanvas();
@@ -1255,7 +1257,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
                 Paint paint = new Paint();
                 paint.setAntiAlias(true);
                 paint.setDither(true);
-                paint.setColor(Color.WHITE);
+                paint.setColor(color);
                 paint.setStyle(Paint.Style.FILL);
                 final float x = canvas.getWidth() * 0.5f;
                 final float y = canvas.getHeight() * 0.5f;
@@ -1408,6 +1410,23 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         int plugged = intent == null ? -1 : intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
         boolean isCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
         mTray.setBatteryLevels(battery, isCharging, leftLevel, rightLevel);
+    }
+
+    @Keep
+    @SuppressWarnings("unused")
+    private void onAppFocusChanged(final boolean aIsFocused) {
+        runOnUiThread(() -> {
+            Session session = SessionStore.get().getActiveSession();
+            if (session.getActiveVideo() == null || !session.getActiveVideo().isActive())
+                return;
+            if (aIsFocused) {
+                if (mPrevActiveMedia != null && mPrevActiveMedia == session.getActiveVideo())
+                    mPrevActiveMedia.play();
+            } else if (session.getActiveVideo().isPlaying()) {
+                mPrevActiveMedia = session.getActiveVideo();
+                mPrevActiveMedia.pause();
+            }
+        });
     }
 
     private SurfaceTexture createSurfaceTexture() {

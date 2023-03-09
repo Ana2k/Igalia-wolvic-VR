@@ -2,6 +2,7 @@
 #include "OpenXRExtensions.h"
 #include <assert.h>
 #include <unordered_set>
+#include "SystemUtils.h"
 
 namespace crow {
 
@@ -13,6 +14,14 @@ const float kClickThreshold = 0.91f;
 // Used to detect pinch events between thumb-tip joint and the
 // rest of the finger tips.
 const float kPinchThreshold = 0.015;
+
+// These two are used to measure a pinch factor between [0,1]
+// between the thumb and the index fingertips, where 0 is no
+// pinch at all and 1.0 means fingers are touching. These
+// value is used to give a visual cue to the user (e.g, size
+// of pointer target).
+const float kPinchStart = 0.055;
+const float kPinchRange = kPinchStart - kPinchThreshold;
 
 OpenXRInputSourcePtr OpenXRInputSource::Create(XrInstance instance, XrSession session, OpenXRActionSet& actionSet, const XrSystemProperties& properties, OpenXRHandFlags handeness, int index)
 {
@@ -58,7 +67,18 @@ XrResult OpenXRInputSource::Initialize()
 
     // Filter mappings
     for (auto& mapping: OpenXRInputMappings) {
-      if (mapping.systemFilter && strcmp(mapping.systemFilter, mSystemProperties.systemName) != 0) {
+      const char* systemFilter = mapping.systemFilter;
+#if defined(PICOXR)
+      // Pico versions before 5.4.0 use a different system id.
+      if (mapping.controllerType == device::PicoXR) {
+          char buildId[128] = {0};
+          if (CompareSemanticVersionStrings(GetBuildIdString(buildId), "5.4.0")) {
+              // System version is < 5.4.0
+              systemFilter = "Pico: PICO HMD";
+          }
+      }
+#endif
+      if (systemFilter && strcmp(systemFilter, mSystemProperties.systemName) != 0) {
         continue;
       }
       bool systemIs6DoF = mSystemProperties.trackingProperties.positionTracking == XR_TRUE;
@@ -499,6 +519,7 @@ bool OpenXRInputSource::GetHandTrackingInfo(const XrFrameState& frameState, XrSp
 #endif
 
     mHasHandJoints = false;
+    mHasAimState = false;
 
     // Update hand locations
     XrHandJointsLocateInfoEXT locateInfo { XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT };
@@ -517,7 +538,7 @@ bool OpenXRInputSource::GetHandTrackingInfo(const XrFrameState& frameState, XrSp
     mHasHandJoints = jointLocations.isActive;
     mHasAimState = (mAimState.status & XR_HAND_TRACKING_AIM_VALID_BIT_FB) != 0;
 
-    return mHasHandJoints && mHasAimState;
+    return mHasHandJoints;
 }
 
 float OpenXRInputSource::GetDistanceBetweenJoints (XrHandJointEXT jointA, XrHandJointEXT jointB)
@@ -533,14 +554,6 @@ float OpenXRInputSource::GetDistanceBetweenJoints (XrHandJointEXT jointA, XrHand
 
 void OpenXRInputSource::EmulateControllerFromHand(device::RenderMode renderMode, ControllerDelegate& delegate)
 {
-    if ((mAimState.status & XR_HAND_TRACKING_AIM_SYSTEM_GESTURE_BIT_FB) != 0) {
-        delegate.SetEnabled(mIndex, false);
-        return;
-    }
-
-    delegate.SetEnabled(mIndex, true);
-    delegate.SetModelVisible(mIndex, false);
-
     // Prepare and submit hand joint locations data for rendering
     assert(mHasHandJoints);
     std::vector<vrb::Matrix> jointTransforms;
@@ -561,8 +574,15 @@ void OpenXRInputSource::EmulateControllerFromHand(device::RenderMode renderMode,
 
         memcpy(&jointTransforms[i], &transform, sizeof(vrb::Matrix));
     }
+
     delegate.SetHandJointLocations(mIndex, jointTransforms);
-    delegate.SetHandVisible(mIndex, true);
+    delegate.SetAimEnabled(mIndex, mHasAimState);
+    delegate.SetMode(mIndex, ControllerMode::Hand);
+    delegate.SetEnabled(mIndex, true);
+
+    // Rest of the logic below requires having Aim info
+    if (!mHasAimState)
+        return;
 
     // Resolve beam and pointer transform
     vrb::Matrix pointerTransform = XrPoseToMatrix(mAimState.aimPose);
@@ -594,8 +614,12 @@ void OpenXRInputSource::EmulateControllerFromHand(device::RenderMode renderMode,
     delegate.SetCapabilityFlags(mIndex, flags);
 
     // Select action
-    bool indexPinching = GetDistanceBetweenJoints(XR_HAND_JOINT_THUMB_TIP_EXT,
-                                                  XR_HAND_JOINT_INDEX_TIP_EXT) < kPinchThreshold;
+    const double indexThumbDistance = GetDistanceBetweenJoints(XR_HAND_JOINT_THUMB_TIP_EXT,
+                                                              XR_HAND_JOINT_INDEX_TIP_EXT);
+    const double pinchFactor = 1.0 - std::clamp((indexThumbDistance - kPinchThreshold)/kPinchRange, 0.0, 1.0);
+    delegate.SetPinchFactor(mIndex, pinchFactor);
+
+    bool indexPinching = indexThumbDistance < kPinchThreshold;
     delegate.SetButtonState(mIndex, ControllerDelegate::BUTTON_TRIGGER,
                             device::kImmersiveButtonTrigger, indexPinching,
                             indexPinching, 1.0);
@@ -662,8 +686,6 @@ void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpac
         return;
     }
 
-    delegate.SetHandVisible(mIndex, false);
-
     // Pose transforms.
     bool isPoseActive { false };
     XrSpaceLocation poseLocation { XR_TYPE_SPACE_LOCATION };
@@ -686,8 +708,9 @@ void OpenXRInputSource::Update(const XrFrameState& frameState, XrSpace localSpac
     };
     adjustPoseLocation(offsets);
 
+    delegate.SetMode(mIndex, ControllerMode::Device);
     delegate.SetEnabled(mIndex, true);
-    delegate.SetModelVisible(mIndex, true);
+    delegate.SetAimEnabled(mIndex, true);
 
     device::CapabilityFlags flags = device::Orientation;
     vrb::Matrix pointerTransform = XrPoseToMatrix(poseLocation.pose);
