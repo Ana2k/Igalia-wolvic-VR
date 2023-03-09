@@ -18,6 +18,7 @@ import com.skydoves.colorpickerview.ColorPickerView;
 import com.skydoves.colorpickerview.flag.FlagView;
 import com.skydoves.colorpickerview.listeners.ColorListener;
 import com.skydoves.colorpickerview.listeners.ColorPickerViewListener;
+import com.skydoves.colorpickerview.preference.ColorPickerPreferenceManager;
 import com.skydoves.colorpickerview.sliders.AlphaSlideBar;
 import com.skydoves.colorpickerview.sliders.BrightnessSlideBar;
 
@@ -50,6 +51,16 @@ public class ColorPromptWidget extends PromptWidget {
         ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
         colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
 
+        //either the line below this will work or,
+        ColorPickerPreferenceManager manager = ColorPickerPreferenceManager.getInstance(getContext());
+
+        //or save states manually.
+//        Log.d("HARI00",String.valueOf(ColorPickerPreferenceManager.getInstance(getContext()).saveColorPickerData(colorPickerView)));
+
+        //TODO() --> try up the color picker dialog box if this does not get done in the next 24 horus of igalia work
+
+
+
         mAudio = AudioEngine.fromContext(aContext);
         mLayout = findViewById(R.id.layout);
         mTitle = findViewById(R.id.title);
@@ -62,6 +73,7 @@ public class ColorPromptWidget extends PromptWidget {
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
                 mPromptDelegate.dismiss();
+                manager.clearSavedAllData();
             }
             hide(REMOVE_WIDGET);
         });
@@ -71,8 +83,20 @@ public class ColorPromptWidget extends PromptWidget {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
+                Log.d("HARI00-obj0", String.valueOf(colorPickerView));
+                manager.saveColorPickerData(colorPickerView);
+                Log.d("HARI0-obj", String.valueOf(colorPickerView));
+                String hexCode = colorPickerView.getColorEnvelope().getHexCode();
+                Log.d("HARI1-hex",hexCode);
+                Log.d("HARI2-env", String.valueOf(colorPickerView.getColorEnvelope()));
+                Log.d("HARI2.1--manager",String.valueOf(manager));
 
-                ((ColorPromptDelegate) mPromptDelegate).confirm("#FFBF00");
+//                manager.setColor("MyColorPicker",colorPickerView.getColor());
+//                Log.d("HARI3--manager",String.valueOf(manager));
+                Log.d("HARI4",String.valueOf(colorPickerView.getColor()));
+                ((ColorPromptDelegate) mPromptDelegate).confirm("#FFC0CB");
+                //pink should be displayed for now.
+
             }
             hide(REMOVE_WIDGET);
         });
