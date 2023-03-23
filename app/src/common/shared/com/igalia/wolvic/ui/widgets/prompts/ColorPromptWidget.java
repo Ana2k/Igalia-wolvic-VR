@@ -84,9 +84,9 @@ public class ColorPromptWidget extends PromptWidget {
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
                 Log.d("HARI00-obj0", String.valueOf(colorPickerView));
-                manager.saveColorPickerData(colorPickerView);
                 Log.d("HARI0-obj", String.valueOf(colorPickerView));
                 String hexCode = colorPickerView.getColorEnvelope().getHexCode();
+                int[] Argb  = colorPickerView.getColorEnvelope().getArgb();
                 Log.d("HARI1-hex",hexCode);
                 Log.d("HARI2-env", String.valueOf(colorPickerView.getColorEnvelope()));
                 Log.d("HARI2.1--manager",String.valueOf(manager));
@@ -94,7 +94,16 @@ public class ColorPromptWidget extends PromptWidget {
 //                manager.setColor("MyColorPicker",colorPickerView.getColor());
 //                Log.d("HARI3--manager",String.valueOf(manager));
                 Log.d("HARI4",String.valueOf(colorPickerView.getColor()));
-                ((ColorPromptDelegate) mPromptDelegate).confirm("#FFC0CB");
+                String colorCodeHex = "#"+hexCode.substring(2,8);
+                Integer colorCodeInt = colorPickerView.getColor();
+                Integer pureColorCodeInt = colorPickerView.getPureColor();
+                Log.d("HARI5",colorCodeHex);
+                Log.d("HARI6",hexCode);
+                Log.d("HARI7",Argb.toString());
+                Log.d("HARI8",pureColorCodeInt.toString());
+                manager.saveColorPickerData(colorPickerView);
+                ((ColorPromptDelegate) mPromptDelegate).confirm(colorCodeHex);
+
                 //pink should be displayed for now.
 
             }
