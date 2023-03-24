@@ -44,22 +44,11 @@ public class ColorPromptWidget extends PromptWidget {
 
     protected void initialize(Context aContext) {
         inflate(aContext, R.layout.prompt_color, this);
-
-        //implementing ColorPickerView
-        //check the colorPicker whether it is running the way we expect it to.
         new ColorPickerView.Builder(getContext()).build();
+
         ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
         colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
-
-        //either the line below this will work or,
         ColorPickerPreferenceManager manager = ColorPickerPreferenceManager.getInstance(getContext());
-
-        //or save states manually.
-//        Log.d("HARI00",String.valueOf(ColorPickerPreferenceManager.getInstance(getContext()).saveColorPickerData(colorPickerView)));
-
-        //TODO() --> try up the color picker dialog box if this does not get done in the next 24 horus of igalia work
-
-
 
         mAudio = AudioEngine.fromContext(aContext);
         mLayout = findViewById(R.id.layout);
@@ -83,29 +72,9 @@ public class ColorPromptWidget extends PromptWidget {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
-                Log.d("HARI00-obj0", String.valueOf(colorPickerView));
-                Log.d("HARI0-obj", String.valueOf(colorPickerView));
-                String hexCode = colorPickerView.getColorEnvelope().getHexCode();
-                int[] Argb  = colorPickerView.getColorEnvelope().getArgb();
-                Log.d("HARI1-hex",hexCode);
-                Log.d("HARI2-env", String.valueOf(colorPickerView.getColorEnvelope()));
-                Log.d("HARI2.1--manager",String.valueOf(manager));
-
-//                manager.setColor("MyColorPicker",colorPickerView.getColor());
-//                Log.d("HARI3--manager",String.valueOf(manager));
-                Log.d("HARI4",String.valueOf(colorPickerView.getColor()));
-                String colorCodeHex = "#"+hexCode.substring(2,8);
-                Integer colorCodeInt = colorPickerView.getColor();
-                Integer pureColorCodeInt = colorPickerView.getPureColor();
-                Log.d("HARI5",colorCodeHex);
-                Log.d("HARI6",hexCode);
-                Log.d("HARI7",Argb.toString());
-                Log.d("HARI8",pureColorCodeInt.toString());
+                String colorCodeHex = "#"+colorPickerView.getColorEnvelope().getHexCode().substring(2,8);
                 manager.saveColorPickerData(colorPickerView);
                 ((ColorPromptDelegate) mPromptDelegate).confirm(colorCodeHex);
-
-                //pink should be displayed for now.
-
             }
             hide(REMOVE_WIDGET);
         });
