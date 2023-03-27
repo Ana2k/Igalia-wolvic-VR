@@ -15,6 +15,8 @@ import com.igalia.wolvic.audio.AudioEngine;
 import com.skydoves.colorpickerview.AlphaTileView;
 import com.skydoves.colorpickerview.ColorEnvelope;
 import com.skydoves.colorpickerview.ColorPickerView;
+import com.skydoves.colorpickerview.flag.BubbleFlag;
+import com.skydoves.colorpickerview.flag.FlagMode;
 import com.skydoves.colorpickerview.flag.FlagView;
 import com.skydoves.colorpickerview.listeners.ColorListener;
 import com.skydoves.colorpickerview.listeners.ColorPickerViewListener;
@@ -48,6 +50,14 @@ public class ColorPromptWidget extends PromptWidget {
 
         ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
         colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
+        AlphaSlideBar alphaSlideBar = findViewById(R.id.alphaSlideBar);
+        colorPickerView.attachAlphaSlider(alphaSlideBar);
+//        XML code for the alpha and brightness sliders. https://github.com/skydoves/ColorPickerPreference/blob/master/app/src/main/res/layout/activity_color_picker_view.xml
+
+
+//        BubbleFlag bubbleFlag = new BubbleFlag(getContext());
+//        bubbleFlag.setFlagMode(FlagMode.ALWAYS);
+//        colorPickerView.setFlagView(bubbleFlag);
         ColorPickerPreferenceManager manager = ColorPickerPreferenceManager.getInstance(getContext());
 
         mAudio = AudioEngine.fromContext(aContext);
@@ -90,13 +100,13 @@ public class ColorPromptWidget extends PromptWidget {
 
         public CustomFlag(Context context, int layout) {
             super(context, layout);
-            textView = findViewById(R.id.flag_color_code);
+//            textView = findViewById(R.id.flag_color_code);
             alphaTileView = findViewById(R.id.alpha_tile_view);
         }
 
         @Override
         public void onRefresh(ColorEnvelope colorEnvelope) {
-            textView.setText("#" + colorEnvelope.getHexCode());
+//            textView.setText("#" + colorEnvelope.getHexCode());
             alphaTileView.setPaintColor(colorEnvelope.getColor());
         }
     }
