@@ -2,27 +2,16 @@ package com.igalia.wolvic.ui.widgets.prompts;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LifecycleOwner;
 
 import com.igalia.wolvic.R;
 import com.igalia.wolvic.audio.AudioEngine;
-import com.skydoves.colorpickerview.AlphaTileView;
-import com.skydoves.colorpickerview.ColorEnvelope;
 import com.skydoves.colorpickerview.ColorPickerView;
 import com.skydoves.colorpickerview.flag.BubbleFlag;
 import com.skydoves.colorpickerview.flag.FlagMode;
-import com.skydoves.colorpickerview.flag.FlagView;
-import com.skydoves.colorpickerview.listeners.ColorListener;
-import com.skydoves.colorpickerview.listeners.ColorPickerViewListener;
 import com.skydoves.colorpickerview.preference.ColorPickerPreferenceManager;
-import com.skydoves.colorpickerview.sliders.AlphaSlideBar;
-import com.skydoves.colorpickerview.sliders.BrightnessSlideBar;
 
 public class ColorPromptWidget extends PromptWidget {
 
@@ -48,16 +37,10 @@ public class ColorPromptWidget extends PromptWidget {
         inflate(aContext, R.layout.prompt_color, this);
         new ColorPickerView.Builder(getContext()).build();
 
-        ColorPickerView colorPickerView =  findViewById(R.id.colorPickerView);
-        colorPickerView.setFlagView(new CustomFlag(getContext(), R.layout.layout_flag));
-        AlphaSlideBar alphaSlideBar = findViewById(R.id.alphaSlideBar);
-        colorPickerView.attachAlphaSlider(alphaSlideBar);
-//        XML code for the alpha and brightness sliders. https://github.com/skydoves/ColorPickerPreference/blob/master/app/src/main/res/layout/activity_color_picker_view.xml
-
-
-//        BubbleFlag bubbleFlag = new BubbleFlag(getContext());
-//        bubbleFlag.setFlagMode(FlagMode.ALWAYS);
-//        colorPickerView.setFlagView(bubbleFlag);
+        ColorPickerView colorPickerView = findViewById(R.id.colorPickerView);
+        BubbleFlag bubbleFlag = new BubbleFlag(getContext());
+        bubbleFlag.setFlagMode(FlagMode.ALWAYS);
+        colorPickerView.setFlagView(bubbleFlag);
         ColorPickerPreferenceManager manager = ColorPickerPreferenceManager.getInstance(getContext());
 
         mAudio = AudioEngine.fromContext(aContext);
@@ -82,7 +65,7 @@ public class ColorPromptWidget extends PromptWidget {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
             if (mPromptDelegate != null && mPromptDelegate instanceof ColorPromptDelegate) {
-                String colorCodeHex = "#"+colorPickerView.getColorEnvelope().getHexCode().substring(2,8);
+                String colorCodeHex = "#" + colorPickerView.getColorEnvelope().getHexCode().substring(2, 8);
                 manager.saveColorPickerData(colorPickerView);
                 ((ColorPromptDelegate) mPromptDelegate).confirm(colorCodeHex);
             }
@@ -92,22 +75,5 @@ public class ColorPromptWidget extends PromptWidget {
 
     public interface ColorPromptDelegate extends PromptDelegate {
         void confirm(@NonNull final String color);
-    }
-    public class CustomFlag extends FlagView {
-
-        private TextView textView;
-        private AlphaTileView alphaTileView;
-
-        public CustomFlag(Context context, int layout) {
-            super(context, layout);
-//            textView = findViewById(R.id.flag_color_code);
-            alphaTileView = findViewById(R.id.alpha_tile_view);
-        }
-
-        @Override
-        public void onRefresh(ColorEnvelope colorEnvelope) {
-//            textView.setText("#" + colorEnvelope.getHexCode());
-            alphaTileView.setPaintColor(colorEnvelope.getColor());
-        }
     }
 }
