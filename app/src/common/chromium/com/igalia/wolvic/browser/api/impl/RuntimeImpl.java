@@ -1,96 +1,104 @@
 package com.igalia.wolvic.browser.api.impl;
 
+import android.app.Application;
 import android.app.Service;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.view.View;
+import android.util.Log;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.igalia.wolvic.browser.api.WResult;
 import com.igalia.wolvic.browser.api.WRuntime;
 import com.igalia.wolvic.browser.api.WRuntimeSettings;
 import com.igalia.wolvic.browser.api.WWebExtensionController;
-
-import org.chromium.weblayer.Browser;
-import org.chromium.weblayer.Tab;
-import org.chromium.weblayer.UnsupportedVersionException;
-import org.chromium.weblayer.WebLayer;
+import com.igalia.wolvic.utils.SystemUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import kotlin.Lazy;
+
 import mozilla.components.concept.fetch.Client;
 import mozilla.components.concept.storage.LoginsStorage;
 import mozilla.components.lib.fetch.httpurlconnection.HttpURLConnectionClient;
 
+import org.chromium.base.ApplicationStatus;
+import org.chromium.base.CommandLine;
+import org.chromium.base.ContextUtils;
+import org.chromium.base.PathUtils;
+import org.chromium.base.library_loader.LibraryLoader;
+import org.chromium.base.library_loader.LibraryProcessType;
+import org.chromium.content_public.browser.BrowserStartupController;
+import org.chromium.content_public.browser.DeviceUtils;
+import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.ResourceBundle;
+import org.chromium.wolvic.TabJni;
+
 public class RuntimeImpl implements WRuntime {
+    static String LOGTAG = SystemUtils.createLogtag(RuntimeImpl.class);
+
+    private static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "content_shell";
+
     private Context mContext;
-    private WebLayer mWebLayer;
     private WRuntimeSettings mRuntimeSettings;
     private WebExtensionControllerImpl mWebExtensionController;
     private ViewGroup mViewContainer;
     private FragmentManager mFragmentManager;
-    private CopyOnWriteArrayList<BrowserDisplay> mPrivateDisplays = new CopyOnWriteArrayList<>();
-    private CopyOnWriteArrayList<BrowserDisplay> mDisplays = new CopyOnWriteArrayList<>();
 
     public RuntimeImpl(@NonNull Context ctx, @NonNull WRuntimeSettings settings) {
         mContext = ctx;
         mRuntimeSettings = settings;
         mWebExtensionController = new WebExtensionControllerImpl();
 
-        try {
-            mWebLayer = WebLayer.loadSync(mContext.getApplicationContext());
-        } catch (UnsupportedVersionException e) {
-            throw new RuntimeException("Failed to initialize WebLayer", e);
-        }
+        initBrowserProcess(ctx);
     }
 
-    Context getContext() {
+    @NonNull
+    public Context getContext() {
         return mContext;
     }
 
-    private BrowserDisplay createBrowserDisplay(boolean incognito) {
-        assert mViewContainer != null;
-        assert mFragmentManager != null;
+    private void initBrowserProcess(Context context) {
+        assert isBrowserProcess() == true;
 
-        String profileName = incognito ? null : "DefaultProfile";
-        Fragment fragment = WebLayer.createBrowserFragment(profileName);
-        BrowserDisplay display = new BrowserDisplay(mContext);
-        display.attach(mFragmentManager, mViewContainer, fragment);
-        return display;
+        ContextUtils.initApplicationContext(context);
+        ResourceBundle.setNoAvailableLocalePaks();
+        // Native libraries for child processes are loaded in its implementations in content.
+        LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_BROWSER);
+
+        PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
+        // Initialize with the application context to monitor the activity status.
+        ApplicationStatus.initialize((Application) context.getApplicationContext());
+
+        CommandLine.init(new String[] {});
+        DeviceUtils.addDeviceSpecificUserAgentSwitch();
+        LibraryLoader.getInstance().ensureInitialized();
+
+        BrowserStartupController.getInstance().startBrowserProcessesAsync(
+                LibraryProcessType.PROCESS_BROWSER, true /* startGpuProcess */, false /* startMinimalBrowser */,
+                new BrowserStartupController.StartupCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Log.i(LOGTAG, "The browser process started!");
+                    }
+
+                    @Override
+                    public void onFailure() {
+                        Log.e(LOGTAG, "Failed to start the browser process");
+                    }
+                });
     }
 
-    public Tab createTab(boolean incognito) {
-        CopyOnWriteArrayList<BrowserDisplay> displays = incognito ? mPrivateDisplays : mDisplays;
-        if (displays.isEmpty()) {
-            displays.add(createBrowserDisplay(incognito));
-        }
-        return displays.get(0).getBrowser().createTab();
+    private static boolean isBrowserProcess() {
+        return !ContextUtils.getProcessName().contains(":");
     }
 
-    public BrowserDisplay acquireDisplay(boolean incognito) {
-        CopyOnWriteArrayList<BrowserDisplay> displays = incognito ? mPrivateDisplays : mDisplays;
-        Optional<BrowserDisplay> display = displays.stream().filter(BrowserDisplay::isAcquired).findFirst();
-        if (display.isPresent()) {
-            return display.get();
-        }
-
-        BrowserDisplay newDisplay = createBrowserDisplay(incognito);
-        displays.add(newDisplay);
-        return newDisplay;
-    }
-
-    public void releaseDisplay(@NonNull BrowserDisplay display) {
-        display.setAcquired(false);
+    public WebContents createWebContents() {
+        return TabJni.get().createWebContents();
     }
 
     @Override
@@ -141,7 +149,7 @@ public class RuntimeImpl implements WRuntime {
 
     @Override
     public void configurationChanged(@NonNull Configuration newConfig) {
-        // no op as WebLayer uses FragmentManager lifecycle.
+        // TODO: Implement
     }
 
     @Override
@@ -168,5 +176,14 @@ public class RuntimeImpl implements WRuntime {
         // TODO: Implement correctly
         return new CrashReportIntent("", "", "", "");
     }
-}
 
+    @NonNull
+    public ViewGroup getViewContainer() {
+        return mViewContainer;
+    }
+
+    @NonNull
+    public FragmentManager getFragmentManager() {
+        return mFragmentManager;
+    }
+}

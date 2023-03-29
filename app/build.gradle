@@ -5,7 +5,6 @@ plugins {
 apply plugin: 'com.android.application'
 apply from: "$project.rootDir/tools/gradle/versionCode.gradle"
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: "org.mozilla.telemetry.glean-gradle-plugin"
 
 // Apply AGConnect plugin only for Hvr builds
@@ -108,7 +107,7 @@ ext.gleanGenerateMarkdownDocs = true
 ext.gleanDocsDirectory = "$rootDir/docs"
 
 android {
-    compileSdkVersion build_versions.target_sdk
+    compileSdkVersion build_versions.compile_sdk
     defaultConfig {
         applicationId "com.igalia.wolvic"
         minSdkVersion build_versions.min_sdk
@@ -145,7 +144,6 @@ android {
 
     project.archivesBaseName = "Wolvic"
 
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -177,15 +175,15 @@ android {
         }
     }
 
-    dataBinding {
-        enabled = true
-    }
-
     lintOptions {
         disable "ExtraTranslation"
     }
 
+<<<<<<< HEAD
     flavorDimensions "platform", "abi", "country", "backend"
+=======
+    flavorDimensions "platform", "abi", "country", "backend", "store"
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 
     productFlavors {
         // Supported platforms
@@ -193,33 +191,11 @@ android {
             dimension "platform"
             externalNativeBuild {
                 cmake {
-                    cppFlags "-DOCULUSVR -DSTORE_BUILD=0" + getOpenXRFlags()
+                    cppFlags "-DOCULUSVR" + getOpenXRFlags()
                     arguments "-DVR_SDK_LIB=oculusvr-lib", "-DVR_SDK_EXTRA_LIB=ovrplatform-lib", "-DOCULUSVR=ON", getOpenXRCMakeFlags()
                 }
             }
             manifestPlaceholders = [ headtrackingRequired:"false", permissionToRemove:"android.permission.RECEIVE_BOOT_COMPLETED" ]
-        }
-
-        oculusvrStore {
-            dimension "platform"
-            externalNativeBuild {
-                cmake {
-                    cppFlags "-DOCULUSVR -DSTORE_BUILD=1" + getOpenXRFlags()
-                    arguments "-DVR_SDK_LIB=oculusvr-lib", "-DVR_SDK_EXTRA_LIB=ovrplatform-lib", "-DOCULUSVR=ON", getOpenXRCMakeFlags()
-                }
-            }
-            manifestPlaceholders = [ headtrackingRequired:"false", permissionToRemove:"android.permission.RECEIVE_BOOT_COMPLETED" ]
-        }
-
-        oculusvr3dofStore {
-            dimension "platform"
-            externalNativeBuild {
-                cmake {
-                    cppFlags "-DOCULUSVR -DSTORE_BUILD=1" + getOpenXRFlags()
-                    arguments "-DVR_SDK_LIB=oculusvr-lib", "-DVR_SDK_EXTRA_LIB=ovrplatform-lib", "-DOCULUSVR=ON", getOpenXRCMakeFlags()
-                }
-            }
-            manifestPlaceholders = [ headtrackingRequired:"false", permissionToRemove:"android.permission.CAMERA" ]
         }
 
         wavevr {
@@ -276,6 +252,29 @@ android {
                 cmake {
                     cppFlags " -DPICOXR -DOPENXR -I" + file("src/openxr/cpp").absolutePath
                     arguments "-DVR_SDK_LIB=picoxr-lib", "-DPICOXR=ON", "-DOPENXR=ON"
+                }
+            }
+        }
+
+        lynx {
+            dimension "platform"
+            targetSdkVersion build_versions.target_sdk_lynx
+            externalNativeBuild {
+                cmake {
+                    cppFlags " -DLYNX -DOPENXR -I" + file("src/openxr/cpp").absolutePath
+                    arguments "-DLYNX=ON", "-DOPENXR=ON"
+                }
+            }
+        }
+
+        spaces {
+            dimension "platform"
+            minSdkVersion build_versions.min_sdk_spaces
+            targetSdkVersion build_versions.target_sdk_spaces
+            externalNativeBuild {
+                cmake {
+                    cppFlags " -DSPACES -DOPENXR -I" + file("src/openxr/cpp").absolutePath
+                    arguments "-DSPACES=ON", "-DOPENXR=ON"
                 }
             }
         }
@@ -343,6 +342,33 @@ android {
         webkit {
             dimension "backend"
         }
+<<<<<<< HEAD
+=======
+
+        // Stores flavor
+        generic {
+            dimension "store"
+        }
+
+        appLab {
+            dimension "store"
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-DSTORE_BUILD", "-DMETA_APP_ID=4812663595466206"
+                }
+            }
+        }
+
+        metaStore {
+            dimension "store"
+            applicationIdSuffix ".metastore"
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-DSTORE_BUILD", "-DMETA_APP_ID=5917120145021341"
+                }
+            }
+        }
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
     }
 
     variantFilter { variant ->
@@ -350,6 +376,10 @@ android {
         def abi = variant.getFlavors().get(1).name
         def country = variant.getFlavors().get(2).name
         def backend = variant.getFlavors().get(3).name
+<<<<<<< HEAD
+=======
+        def store = variant.getFlavors().get(4).name
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 
         // Create x86_64 variants only for noapi platform
         if (abi == 'x86_64')
@@ -364,6 +394,13 @@ android {
             variant.setIgnore(true);
         if (backend == 'webkit' && !isWebKitAvailable())
             variant.setIgnore(true);
+<<<<<<< HEAD
+=======
+
+        // MetaStore and AppLab only apply to oculusvr builds.
+        if ((store == 'metaStore' || store == "appLab") && !platform.startsWith('oculusvr'))
+            variant.setIgnore(true);
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
     }
 
     sourceSets {
@@ -386,6 +423,7 @@ android {
             ]
         }
 
+<<<<<<< HEAD
         oculusvrStore {
             java.srcDirs = [
                     'src/oculusvr/java'
@@ -437,6 +475,8 @@ android {
                     : "src/oculusvrArmRelease/AndroidManifest.xml"
         }
 
+=======
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
         wavevr {
             java.srcDirs = [
                     'src/wavevr/java'
@@ -494,6 +534,14 @@ android {
             ]
         }
 
+        lynx {
+            manifest.srcFile "src/lynx/AndroidManifest.xml"
+        }
+
+        spaces {
+            manifest.srcFile "src/spaces/AndroidManifest.xml"
+        }
+
         noapi {
             java.srcDirs = [
                     'src/noapi/java'
@@ -517,6 +565,24 @@ android {
                     'src/common/webkit'
             ]
         }
+<<<<<<< HEAD
+=======
+    }
+
+    sourceSets.all {
+        // oculusvr needs a specific manifest file by its buildtype.
+        if (name.startsWith('oculusvr')) {
+           if (name.toLowerCase().contains('debug')) {
+                manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
+           }
+
+           if (name.toLowerCase().contains('release')) {
+               manifest.srcFile getUseDebugSigningOnRelease()
+                   ? "src/oculusvrArmDebug/AndroidManifest.xml"
+                   : "src/oculusvrArmRelease/AndroidManifest.xml"
+           }
+        }
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
     }
 
     testOptions {
@@ -525,6 +591,19 @@ android {
 
     aaptOptions {
         noCompress 'ja'
+        // TODO: This statement should be moved under 'chromium' dimension or removed. So far, these
+        // options are affected to every variants when`isChromiumAvailable()` is true.
+        if (isChromiumAvailable()) {
+            noCompress 'dat'
+            noCompress 'bin'
+            noCompress 'pak'
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+        prefab true // enable prefab support for various SDK AAR
+        dataBinding true
     }
 }
 
@@ -549,10 +628,13 @@ dependencies {
     implementation deps.lifecycle.viewmodel
     implementation deps.lifecycle.java8
     implementation deps.lifecycle.process
-    implementation deps.support.cardview
-    implementation deps.support.app_compat
-    implementation deps.support.vector_drawable
     implementation deps.support.annotations
+    implementation deps.support.app_compat
+    implementation deps.support.recyclerview
+    implementation deps.support.cardview
+    implementation deps.support.design
+    implementation deps.support.vector_drawable
+    implementation deps.support.viewpager2
     implementation deps.constraint_layout
     implementation deps.gson
     implementation deps.room.runtime
@@ -631,6 +713,15 @@ dependencies {
     hvrImplementation 'com.huawei.hms:location:6.2.0.300'
     hvrImplementation 'com.huawei.hms:push:6.5.0.300'
 
+<<<<<<< HEAD
+=======
+    // Lynx
+    lynxImplementation fileTree(dir: "${project.rootDir}/third_party/lynx", include: ['*.aar'])
+
+    // Snapdragon Spaces
+    spacesImplementation fileTree(dir: "${project.rootDir}/third_party/spaces", include: ['*.aar'])
+
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
     // gecko
     def branch = "nightly" // "nightly" or "beta"
     geckoImplementation deps.gecko_view."${branch}_x86_64"
@@ -666,11 +757,6 @@ if (findProject(':wavesdk')) {
         wavevrImplementation fileTree(dir: "${project.rootDir}/third_party/wavesdk/", include: ['*.aar'])
         wavevrStoreImplementation fileTree(dir: "${project.rootDir}/third_party/wavesdk/", include: ['*.aar'])
     }
-}
-
-dependencies {
-    implementation "com.google.android.material:material:$versions.support"
-    implementation 'androidx.viewpager2:viewpager2:1.0.0'
 }
 
 if (gradle.hasProperty('geckoViewLocalArm') || gradle.hasProperty('geckoViewLocalX86')) {

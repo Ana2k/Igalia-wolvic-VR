@@ -126,6 +126,16 @@ if(OPENXR)
             ${CMAKE_SOURCE_DIR}/../third_party/picoxr/libs/android.${ANDROID_ABI}/libopenxr_loader.so
             ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libopenxr_loader.so
         )
+    elseif (LYNX)
+        include_directories(
+                ${CMAKE_SOURCE_DIR}/../third_party/OpenXR-SDK/include
+                ${CMAKE_SOURCE_DIR}/../app/src/openxr/cpp
+        )
+    elseif (SPACES)
+        include_directories(
+                ${CMAKE_SOURCE_DIR}/../third_party/OpenXR-SDK/include
+                ${CMAKE_SOURCE_DIR}/../app/src/openxr/cpp
+        )
     endif ()
     target_sources(
             native-lib
@@ -206,6 +216,21 @@ set_target_properties(hvr-lib PROPERTIES IMPORTED_LOCATION
 add_library(picoxr-lib SHARED IMPORTED)
 set_target_properties(picoxr-lib PROPERTIES IMPORTED_LOCATION
         ${CMAKE_SOURCE_DIR}/../third_party/picoxr/libs/android.${ANDROID_ABI}/libopenxr_loader.so)
+
+if (LYNX)
+    find_package(loader REQUIRED CONFIG)
+    target_link_libraries(native-lib loader::openxr_loader)
+endif()
+
+if (SPACES)
+    find_package(qxrclients REQUIRED CONFIG)
+    target_link_libraries(native-lib qxrclients::qxrcoreclient)
+    target_link_libraries(native-lib qxrclients::qxrcamclient)
+    target_link_libraries(native-lib qxrclients::qxrsplitclient)
+
+    find_package(loader REQUIRED CONFIG)
+    target_link_libraries(native-lib loader::openxr_loader)
+endif()
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this

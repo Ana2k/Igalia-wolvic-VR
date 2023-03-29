@@ -101,6 +101,13 @@ struct DeviceDelegateOpenXR::State {
   bool mHandTrackingSupported = false;
   std::vector<float> refreshRates;
   bool reorientRequested { false };
+<<<<<<< HEAD
+=======
+  bool passthroughSupported { false };
+  XrPassthroughFB passthrough { XR_NULL_HANDLE };
+  OpenXRLayerPassthroughPtr passthroughLayer { nullptr };
+  bool passthroughErrorState { false };
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 
   bool IsPositionTrackingSupported() {
       CHECK(system != XR_NULL_SYSTEM_ID);
@@ -120,6 +127,10 @@ struct DeviceDelegateOpenXR::State {
       deviceType = IsPositionTrackingSupported() ? device::HVR6DoF : device::HVR3DoF;
 #elif PICOXR
       deviceType = device::PicoXR;
+#elif LYNX
+      deviceType = device::LynxR1;
+#elif SPACES
+      deviceType = device::LenovoA3;
 #endif
       VRB_LOG("Initializing device %s from vendor %d. Device type %d", systemProperties.systemName, systemProperties.vendorId, deviceType);
   }
@@ -132,8 +143,7 @@ struct DeviceDelegateOpenXR::State {
     }
     layersEnabled = VRBrowser::AreLayersEnabled();
 
-#if defined(OCULUSVR) || defined(PICOXR)
-    // Adhoc loader required for OpenXR on Oculus and Pico
+#ifndef HVR
     PFN_xrInitializeLoaderKHR initializeLoaderKHR;
     CHECK_XRCMD(xrGetInstanceProcAddr(nullptr, "xrInitializeLoaderKHR", reinterpret_cast<PFN_xrVoidFunction*>(&initializeLoaderKHR)));
     XrLoaderInitInfoAndroidKHR loaderData;
@@ -185,7 +195,12 @@ struct DeviceDelegateOpenXR::State {
       extensions.push_back(XR_FB_COMPOSITION_LAYER_IMAGE_LAYOUT_EXTENSION_NAME);
     }
 #endif
+    if (OpenXRExtensions::IsExtensionSupported(XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME))
+        extensions.push_back(XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME);
 
+    if (OpenXRExtensions::IsExtensionSupported(XR_FB_PASSTHROUGH_EXTENSION_NAME)) {
+      extensions.push_back(XR_FB_PASSTHROUGH_EXTENSION_NAME);
+    }
 
     java = {XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
     java.applicationVM = javaContext->vm;
@@ -223,12 +238,23 @@ struct DeviceDelegateOpenXR::State {
         systemProperties.next = &handTrackingProperties;
     }
 
+    // If passthrough extension is present, query whether the runtime actually supports it
+    XrSystemPassthroughPropertiesFB passthroughProperties{ XR_TYPE_SYSTEM_PASSTHROUGH_PROPERTIES_FB};
+    passthroughProperties.supportsPassthrough = XR_FALSE;
+    if (OpenXRExtensions::IsExtensionSupported(XR_FB_PASSTHROUGH_EXTENSION_NAME)) {
+        passthroughProperties.next = systemProperties.next;
+        systemProperties.next = &passthroughProperties;
+    }
+
     // Retrieve system info
     CHECK_XRCMD(xrGetSystemProperties(instance, system, &systemProperties))
     VRB_LOG("OpenXR system name: %s", systemProperties.systemName);
 
     mHandTrackingSupported = handTrackingProperties.supportsHandTracking;
     VRB_LOG("OpenXR runtime %s hand tracking", mHandTrackingSupported ? "does support" : "doesn't support");
+
+    passthroughSupported = passthroughProperties.supportsPassthrough;
+    VRB_LOG("OpenXR runtime %s passthrough", passthroughSupported ? "does support" : "doesn't support");
 
     InitializeDeviceType();
   }
@@ -480,7 +506,7 @@ struct DeviceDelegateOpenXR::State {
 #elif PICOXR
       return Pico4.path;
 #else
-      return nullptr;
+      return KHRSimple.path;
 #endif
   }
 
@@ -604,8 +630,34 @@ struct DeviceDelegateOpenXR::State {
 
   void Shutdown() {
     // Release swapChains
-    for (OpenXRSwapChainPtr swapChain: eyeSwapChains) {
-      swapChain->Destroy();
+    if (!eyeSwapChains.empty()) {
+        eyeSwapChains.clear();
+    }
+
+    // Release Layers
+    if (!uiLayers.empty()) {
+        uiLayers.clear();
+    }
+
+    if (cubeLayer != XR_NULL_HANDLE) {
+      cubeLayer->Destroy();
+      cubeLayer = XR_NULL_HANDLE;
+    }
+
+    if (equirectLayer != XR_NULL_HANDLE) {
+      equirectLayer->Destroy();
+      equirectLayer = XR_NULL_HANDLE;
+    }
+
+    if (passthroughLayer != nullptr) {
+        passthroughLayer->Destroy();
+        passthroughLayer = nullptr;
+    }
+
+    // Release passthrough handle
+    if (passthrough != XR_NULL_HANDLE) {
+      CHECK_XRCMD(OpenXRExtensions::sXrDestroyPassthroughFB (passthrough));
+      passthrough = XR_NULL_HANDLE;
     }
 
     // Release spaces
@@ -655,6 +707,63 @@ struct DeviceDelegateOpenXR::State {
           controllersReadyCallback();
           controllersReadyCallback = nullptr;
       }
+  }
+
+  void InitializePassthrough() {
+    if (!passthroughSupported || session == XR_NULL_HANDLE)
+      return;
+
+    assert(OpenXRExtensions::sXrCreatePassthroughFB != nullptr && passthrough == XR_NULL_HANDLE);
+
+    XrPassthroughCreateInfoFB passthroughCreateInfo = {
+      .type = XR_TYPE_PASSTHROUGH_CREATE_INFO_FB,
+      .flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB,
+    };
+    CHECK_XRCMD(OpenXRExtensions::sXrCreatePassthroughFB(session, &passthroughCreateInfo, &passthrough));
+  }
+
+  void HandlePassthroughEvent(const XrEventDataPassthroughStateChangedFB& event) {
+    XrPassthroughStateChangedFlagsFB passthroughState = event.flags;
+    passthroughErrorState = false;
+
+    if ((passthroughState & XR_PASSTHROUGH_STATE_CHANGED_REINIT_REQUIRED_BIT_FB) ||
+        (passthroughState & XR_PASSTHROUGH_STATE_CHANGED_NON_RECOVERABLE_ERROR_BIT_FB)) {
+      // Destroy and re-create passthrough instance and layer
+      if (passthroughLayer->xrLayer != XR_NULL_HANDLE) {
+        passthroughLayer->Destroy();
+        passthroughLayer->xrLayer = XR_NULL_HANDLE;
+      }
+      if (passthrough != XR_NULL_HANDLE) {
+        CHECK_XRCMD(OpenXRExtensions::sXrDestroyPassthroughFB (passthrough));
+        passthrough = XR_NULL_HANDLE;
+      }
+      passthroughErrorState = true;
+    }
+
+    if (passthroughState & XR_PASSTHROUGH_STATE_CHANGED_REINIT_REQUIRED_BIT_FB) {
+      InitializePassthrough();
+
+      if (passthrough != XR_NULL_HANDLE) {
+          vrb::RenderContextPtr ctx = context.lock();
+          passthroughLayer->Init(javaContext->env, session, ctx, passthrough);
+      }
+      passthroughErrorState = false;
+    } else if ((passthroughState & XR_PASSTHROUGH_STATE_CHANGED_RESTORED_ERROR_BIT_FB)) {
+      passthroughErrorState = false;
+    } else {
+      // XR_PASSTHROUGH_STATE_CHANGED_RECOVERABLE_ERROR_BIT_FB
+      passthroughErrorState = true;
+    }
+  }
+
+  bool CanEnablePassthrough() {
+    if (!passthroughSupported || passthrough == XR_NULL_HANDLE || passthroughErrorState)
+      return false;
+
+    if (passthroughLayer == nullptr || passthroughLayer->xrLayer == XR_NULL_HANDLE)
+      return false;
+
+    return true;
   }
 };
 
@@ -811,6 +920,12 @@ DeviceDelegateOpenXR::ProcessEvents() {
         m.reorientRequested = true;
         VRB_DEBUG("OpenXR: reference space changed. User recentered the view?");
         break;
+      case XR_TYPE_EVENT_DATA_PASSTHROUGH_STATE_CHANGED_FB: {
+        const auto &event =
+                *reinterpret_cast<const XrEventDataPassthroughStateChangedFB *>(ev);
+        m.HandlePassthroughEvent(event);
+        break;
+      }
       default: {
         VRB_DEBUG("OpenXR ignoring event type %d", ev->type);
         break;
@@ -1053,8 +1168,16 @@ DeviceDelegateOpenXR::EndFrame(const FrameEndMode aEndMode) {
       return;
   }
 
-  // Add skybox layer
-  if (m.cubeLayer && m.cubeLayer->IsLoaded() && m.cubeLayer->IsDrawRequested()) {
+  // Add skybox or passthrough layer
+  if (m.passthroughLayer != nullptr && m.passthroughLayer->IsDrawRequested() && m.CanEnablePassthrough()) {
+    XrCompositionLayerPassthroughFB passthroughCompLayer = {
+      .type = XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB,
+      .flags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
+      .space = XR_NULL_HANDLE,
+      .layerHandle = m.passthroughLayer->xrLayer,
+    };
+    layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&passthroughCompLayer));
+  } else if (m.cubeLayer && m.cubeLayer->IsLoaded() && m.cubeLayer->IsDrawRequested()) {
     m.cubeLayer->Update(m.localSpace, predictedPose, XR_NULL_HANDLE);
     for (uint32_t i = 0; i < m.cubeLayer->HeaderCount(); ++i) {
       layers.push_back(m.cubeLayer->Header(i));
@@ -1238,6 +1361,24 @@ DeviceDelegateOpenXR::CreateLayerEquirect(const VRLayerPtr &aSource) {
   return result;
 }
 
+VRLayerPassthroughPtr
+DeviceDelegateOpenXR::CreateLayerPassthrough() {
+  if (!m.layersEnabled || !m.passthroughSupported || !m.passthrough) {
+    return nullptr;
+  }
+
+  VRLayerPassthroughPtr result = VRLayerPassthrough::Create();
+  if (m.passthroughLayer != nullptr) {
+    m.passthroughLayer->Destroy();
+  }
+  m.passthroughLayer = OpenXRLayerPassthrough::Create(result);
+  if (m.session != XR_NULL_HANDLE) {
+    vrb::RenderContextPtr context = m.context.lock();
+    m.passthroughLayer->Init(m.javaContext->env, m.session, context, m.passthrough);
+  }
+  return result;
+}
+
 void
 DeviceDelegateOpenXR::DeleteLayer(const VRLayerPtr& aLayer) {
   if (m.cubeLayer && m.cubeLayer->layer == aLayer) {
@@ -1250,9 +1391,13 @@ DeviceDelegateOpenXR::DeleteLayer(const VRLayerPtr& aLayer) {
     m.equirectLayer = nullptr;
     return;
   }
+  if (m.passthroughLayer && m.passthroughLayer->vrLayer == aLayer) {
+    m.passthroughLayer->Destroy();
+    m.passthroughLayer = nullptr;
+    return;
+  }
   for (int i = 0; i < m.uiLayers.size(); ++i) {
     if (m.uiLayers[i]->GetLayer() == aLayer) {
-      m.uiLayers[i]->Destroy();
       m.uiLayers.erase(m.uiLayers.begin() + i);
       return;
     }
@@ -1293,6 +1438,10 @@ DeviceDelegateOpenXR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
   m.InitializeViews();
   m.InitializeImmersiveDisplay();
   m.InitializeRefreshRates();
+<<<<<<< HEAD
+=======
+  m.InitializePassthrough();
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 #if OCULUSVR
   // See InitialiceDeviceType(). We overwrite the system name so that we load the proper input
   // mapping for the Quest Pro, as it incorrectly advertises itself as "Oculus Quest2"

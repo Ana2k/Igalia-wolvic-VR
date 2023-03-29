@@ -61,7 +61,7 @@
 #include <fstream>
 #include <unordered_map>
 
-#if defined(OCULUSVR) && STORE_BUILD == 1
+#if defined(OCULUSVR) && defined(STORE_BUILD)
 #include "OVR_Platform.h"
 #endif
 
@@ -205,9 +205,13 @@ struct BrowserWorld::State {
   bool wasWebXRRendering = false;
   double lastBatteryLevelUpdate = -1.0;
   bool reorientRequested = false;
+<<<<<<< HEAD
+=======
+  VRLayerPassthroughPtr layerPassthrough;
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 #if HVR
   bool wasButtonAppPressed = false;
-#elif defined(OCULUSVR) && STORE_BUILD == 1
+#elif defined(OCULUSVR) && defined(STORE_BUILD)
   bool isApplicationEntitled = false;
 #endif
 
@@ -275,8 +279,9 @@ BrowserWorld::State::CheckBackButton() {
           continue;
       }
 
-      if (!(controller.lastButtonState & ControllerDelegate::BUTTON_APP) &&
-          (controller.buttonState & ControllerDelegate::BUTTON_APP)) {
+    if ((!(controller.lastButtonState & ControllerDelegate::BUTTON_APP) && (controller.buttonState & ControllerDelegate::BUTTON_APP)) ||
+        (!(controller.lastButtonState & ControllerDelegate::BUTTON_B) && (controller.buttonState & ControllerDelegate::BUTTON_B)) ||
+        (!(controller.lastButtonState & ControllerDelegate::BUTTON_Y) && (controller.buttonState & ControllerDelegate::BUTTON_Y))) {
           SimulateBack();
           webXRInterstialState = WebXRInterstialState::HIDDEN;
       } else if (webXRInterstialState == WebXRInterstialState::ALLOW_DISMISS
@@ -417,23 +422,24 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
       controller.pointer->Load(device);
     }
 
-    if (!(controller.lastButtonState & ControllerDelegate::BUTTON_APP) && (controller.buttonState & ControllerDelegate::BUTTON_APP)) {
+    if ((!(controller.lastButtonState & ControllerDelegate::BUTTON_APP) && (controller.buttonState & ControllerDelegate::BUTTON_APP)) ||
+      (!(controller.lastButtonState & ControllerDelegate::BUTTON_B) && (controller.buttonState & ControllerDelegate::BUTTON_B)) ||
+      (!(controller.lastButtonState & ControllerDelegate::BUTTON_Y) && (controller.buttonState & ControllerDelegate::BUTTON_Y))) {
       SimulateBack();
     }
 
 
     const bool pressed = controller.buttonState & ControllerDelegate::BUTTON_TRIGGER ||
-                         controller.buttonState & ControllerDelegate::BUTTON_TOUCHPAD;
+                         controller.buttonState & ControllerDelegate::BUTTON_TOUCHPAD ||
+                         controller.buttonState & ControllerDelegate::BUTTON_A ||
+                         controller.buttonState & ControllerDelegate::BUTTON_X;
     const bool wasPressed = controller.lastButtonState & ControllerDelegate::BUTTON_TRIGGER ||
-                            controller.lastButtonState & ControllerDelegate::BUTTON_TOUCHPAD;
+                            controller.lastButtonState & ControllerDelegate::BUTTON_TOUCHPAD ||
+                            controller.lastButtonState & ControllerDelegate::BUTTON_A ||
+                            controller.lastButtonState & ControllerDelegate::BUTTON_X;;
 
     if (!controller.focused) {
-      const bool focusRequested =
-          (pressed && !wasPressed) ||
-              ((controller.buttonState & ControllerDelegate::BUTTON_A) && (controller.lastButtonState & ControllerDelegate::BUTTON_A) == 0) ||
-              ((controller.buttonState & ControllerDelegate::BUTTON_B) && (controller.lastButtonState & ControllerDelegate::BUTTON_B) == 0) ||
-              ((controller.buttonState & ControllerDelegate::BUTTON_X) && (controller.lastButtonState & ControllerDelegate::BUTTON_X) == 0) ||
-              ((controller.buttonState & ControllerDelegate::BUTTON_Y) && (controller.lastButtonState & ControllerDelegate::BUTTON_Y) == 0);
+      const bool focusRequested = pressed && !wasPressed;
       if (focusRequested) {
         ChangeControllerFocus(controller);
       }
@@ -1010,7 +1016,12 @@ BrowserWorld::ShutdownGL() {
   m.glInitialized = false;
 }
 
-#if defined(OCULUSVR) && STORE_BUILD == 1
+bool
+BrowserWorld::IsGLInitialized() const {
+  return m.glInitialized;
+}
+
+#if defined(OCULUSVR) && defined(STORE_BUILD)
 void
 BrowserWorld::ProcessOVRPlatformEvents() {
   if (m.isApplicationEntitled)
@@ -1072,7 +1083,24 @@ BrowserWorld::StartFrame() {
     }
   }
 
-#if defined(OCULUSVR) && STORE_BUILD == 1
+  // @FIXME: Make this a state variable and toggle it with the menu item
+  //         Also replace the #if below with a proper SupportsPassthrough()
+  //         method based on build type.
+  bool passthroughEnabled = false;
+
+#if defined(OCULUSVR)
+  if (passthroughEnabled) {
+    // Lazily create Passthrough layer
+    if (!m.layerPassthrough) {
+      m.layerPassthrough = m.device->CreateLayerPassthrough();
+    }
+    m.layerPassthrough->RequestDraw();
+  } else if (m.layerPassthrough) {
+    m.layerPassthrough->ClearRequestDraw();
+  }
+#endif
+
+#if defined(OCULUSVR) && defined(STORE_BUILD)
   ProcessOVRPlatformEvents();
 #endif
   m.device->ProcessEvents();

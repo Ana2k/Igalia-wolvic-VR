@@ -13,9 +13,18 @@ jobs:
     strategy:
       matrix:
         flavour: [
+<<<<<<< HEAD
           assembleOculusvrArm64WorldGecko,
           assembleHvrArm64WorldGecko,
           assemblePicoxrArm64WorldGecko
+=======
+          assembleOculusvrArm64WorldGeckoGeneric,
+          assembleOculusvrArm64WorldGeckoMetaStore,
+          assembleHvrArm64WorldGeckoGeneric,
+          assemblePicoxrArm64WorldGeckoGeneric,
+          assembleLynxArm64WorldGeckoGeneric,
+          assembleSpacesArm64WorldGeckoGeneric
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
         ]
 
     steps:

@@ -212,9 +212,7 @@ OpenXRLayerEquirect::Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aC
   const uint numXRLayers = GetNumXRLayers();
   for (int i = 0; i < numXRLayers; ++i) {
     device::Eye eye = i == 0 ? device::Eye::Left : device::Eye::Right;
-    // Map video orientation
-    vrb::Matrix transform = XrPoseToMatrix(aPose).PostMultiply(layer->GetModelTransform(eye));
-    xrLayers[i].pose =  XrPoseIdentity(); //MatrixToXrPose(transform);
+    xrLayers[i].pose =  XrPoseIdentity();
 
     // Map surface and rect
     device::EyeRect rect = layer->GetTextureRect(eye);
@@ -232,14 +230,44 @@ OpenXRLayerEquirect::Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aC
     xrLayers[i].scale.y = scale.y();
     xrLayers[i].bias.x = translation.x();
     xrLayers[i].bias.y = translation.y();
+
+#ifdef OCULUSVR
+    if (mLayerImageLayout != XR_NULL_HANDLE)
+      PushNextXrStructureInChain((XrBaseInStructure&)xrLayers[i], (XrBaseInStructure&)*mLayerImageLayout);
+#endif
   }
 }
 
-#if OCULUSVR
-const void*
-OpenXRLayerEquirect::GetNextStructureInChain() const {
-    return this->nextStructureInChain;
+// OpenXRLayerPassthrough;
+
+OpenXRLayerPassthroughPtr
+OpenXRLayerPassthrough::Create(const VRLayerPassthroughPtr& aLayer) {
+  // @FIXME: Consider making this method an actual constructor. Same for similar methods in
+  //         the other layers above.
+  auto result = std::make_shared<crow::OpenXRLayerPassthrough>();
+  result->vrLayer = aLayer;
+
+  return result;
 }
-#endif
+
+void
+OpenXRLayerPassthrough::Init(JNIEnv *aEnv, XrSession session, vrb::RenderContextPtr &aContext, const XrPassthroughFB& passthroughInstance) {
+  XrPassthroughLayerCreateInfoFB layerCreateInfo = {
+    .type = XR_TYPE_PASSTHROUGH_LAYER_CREATE_INFO_FB,
+    .passthrough = passthroughInstance,
+    .flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB,
+    .purpose = XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB
+  };
+  CHECK_XRCMD(OpenXRExtensions::sXrCreatePassthroughLayerFB(session, &layerCreateInfo, &xrLayer));
+}
+
+void
+OpenXRLayerPassthrough::Destroy() {
+  if (xrLayer == XR_NULL_HANDLE)
+    return;
+
+  CHECK_XRCMD(OpenXRExtensions::sXrDestroyPassthroughLayerFB (xrLayer));
+  xrLayer = XR_NULL_HANDLE;
+}
 
 }

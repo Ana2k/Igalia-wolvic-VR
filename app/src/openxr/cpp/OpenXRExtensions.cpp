@@ -4,6 +4,7 @@
 namespace crow {
 
 std::unordered_set<std::string> OpenXRExtensions::sSupportedExtensions { };
+std::unordered_set<std::string> OpenXRExtensions::sSupportedApiLayers { };
 PFN_xrGetOpenGLESGraphicsRequirementsKHR OpenXRExtensions::sXrGetOpenGLESGraphicsRequirementsKHR = nullptr;
 PFN_xrCreateSwapchainAndroidSurfaceKHR OpenXRExtensions::sXrCreateSwapchainAndroidSurfaceKHR = nullptr;
 PFN_xrCreateHandTrackerEXT OpenXRExtensions::sXrCreateHandTrackerEXT = nullptr;
@@ -13,8 +14,16 @@ PFN_xrGetHandMeshFB OpenXRExtensions::sXrGetHandMeshFB = nullptr;
 PFN_xrPerfSettingsSetPerformanceLevelEXT OpenXRExtensions::sXrPerfSettingsSetPerformanceLevelEXT = nullptr;
 PFN_xrEnumerateDisplayRefreshRatesFB OpenXRExtensions::sXrEnumerateDisplayRefreshRatesFB = nullptr;
 PFN_xrRequestDisplayRefreshRateFB OpenXRExtensions::sXrRequestDisplayRefreshRateFB = nullptr;
+<<<<<<< HEAD
+=======
+PFN_xrCreatePassthroughFB OpenXRExtensions::sXrCreatePassthroughFB = nullptr;
+PFN_xrDestroyPassthroughFB OpenXRExtensions::sXrDestroyPassthroughFB = nullptr;
+PFN_xrCreatePassthroughLayerFB OpenXRExtensions::sXrCreatePassthroughLayerFB = nullptr;
+PFN_xrDestroyPassthroughLayerFB OpenXRExtensions::sXrDestroyPassthroughLayerFB = nullptr;
+>>>>>>> a875aeafd5aca1e9da365dbec648a515ab7c75b9
 
 void OpenXRExtensions::Initialize() {
+    // Extensions.
     uint32_t extensionCount { 0 };
     CHECK_XRCMD(xrEnumerateInstanceExtensionProperties(nullptr, 0, &extensionCount, nullptr))
 
@@ -25,6 +34,20 @@ void OpenXRExtensions::Initialize() {
     for (auto& extension: extensions) {
         sSupportedExtensions.insert(extension.extensionName);
     }
+#ifdef LYNX
+    // Lynx incorrectly advertises this extension as supported but in reality it does not work.
+    sSupportedExtensions.erase(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+#endif
+
+    // API layers.
+    uint32_t apiLayersCount;
+    CHECK_XRCMD(xrEnumerateApiLayerProperties(0, &apiLayersCount, nullptr));
+
+    std::vector<XrApiLayerProperties> apiLayers(apiLayersCount, { XR_TYPE_API_LAYER_PROPERTIES });
+    CHECK_XRCMD(xrEnumerateApiLayerProperties((uint32_t) apiLayers.size(), &apiLayersCount, apiLayers.data()));
+
+    for (auto& layer : apiLayers)
+        sSupportedApiLayers.insert(layer.layerName);
 }
 
 void OpenXRExtensions::LoadExtensions(XrInstance instance) {
@@ -62,10 +85,29 @@ void OpenXRExtensions::LoadExtensions(XrInstance instance) {
                                             reinterpret_cast<PFN_xrVoidFunction *>(&sXrGetHandMeshFB)));
         }
     }
+
+    if (IsExtensionSupported(XR_FB_PASSTHROUGH_EXTENSION_NAME)) {
+        CHECK_XRCMD(xrGetInstanceProcAddr(instance, "xrCreatePassthroughFB",
+                                          reinterpret_cast<PFN_xrVoidFunction *>(&sXrCreatePassthroughFB)));
+        CHECK_XRCMD(xrGetInstanceProcAddr(instance, "xrDestroyPassthroughFB",
+                                          reinterpret_cast<PFN_xrVoidFunction *>(&sXrDestroyPassthroughFB)));
+        CHECK_XRCMD(xrGetInstanceProcAddr(instance, "xrCreatePassthroughLayerFB",
+                                          reinterpret_cast<PFN_xrVoidFunction *>(&sXrCreatePassthroughLayerFB)));
+        CHECK_XRCMD(xrGetInstanceProcAddr(instance, "xrDestroyPassthroughLayerFB",
+                                          reinterpret_cast<PFN_xrVoidFunction *>(&sXrDestroyPassthroughLayerFB)));
+    }
+}
+
+void OpenXRExtensions::LoadApiLayers(XrInstance instance) {
+    CHECK(instance != XR_NULL_HANDLE);
 }
 
 bool OpenXRExtensions::IsExtensionSupported(const char* name) {
     return sSupportedExtensions.count(name) > 0;
+}
+
+bool OpenXRExtensions::IsApiLayerSupported(const char* name) {
+    return sSupportedApiLayers.count(name) > 0;
 }
 
 } // namespace crow
