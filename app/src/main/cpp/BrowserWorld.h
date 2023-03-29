@@ -35,6 +35,7 @@ public:
   bool IsPaused() const;
   void InitializeJava(JNIEnv* aEnv, jobject& aActivity, jobject& aAssetManager);
   void InitializeGL();
+  bool IsGLInitialized() const;
   void ShutdownJava();
   void ShutdownGL();
   void Draw(){
@@ -93,7 +94,7 @@ protected:
   void DrawSplashAnimation(device::Eye aEye);
   void CreateSkyBox(const std::string& aBasePath, const std::string& aExtension);
 private:
-#if defined(OCULUSVR) && STORE_BUILD == 1
+#if defined(OCULUSVR) && defined(STORE_BUILD)
   void ProcessOVRPlatformEvents();
 #endif
   State& m;

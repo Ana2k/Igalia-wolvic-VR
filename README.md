@@ -1,16 +1,14 @@
-# Wolvic VR Browser
+# Wolvic XR Browser
 
-The goal of the Wolvic project is to create a full-featured browser exclusively for *standalone* AR and VR headsets.
+The goal of the Wolvic project is to create a full-featured browser exclusively AR and VR headsets.
 
-You can find us in [wolvic.com](https://www.wolvic.com), Twitter [@wolvicxr](https://twitter.com/wolvicxr), and at [info@wolvic.com](mailto:info@wolvic.com).
+You can find us in [wolvic.com](https://www.wolvic.com), Mastodon [@WolvicXR](https://floss.social/@WolvicXR), Twitter [@wolvicxr](https://twitter.com/wolvicxr), and at [info@wolvic.com](mailto:info@wolvic.com).
 
 Want to learn more about Wolvic? Read our [FAQ](https://wolvic.com/en/faq)!
 
 ## Locale support
 
-Wolvic supports Chinese (China), Chinese (Taiwan), English, French, German, Italian, Japanese, Russian, and Spanish for user interface, voice search, and text entry. Localization is provided by Mozilla's amazing community of volunteer localizers.
-
-For more info on localization, how it works in the Wolvic XR project, and how to correctly edit localizable text in the application, please see the [localization wiki page](https://github.com/MozillaReality/FirefoxReality/wiki/Localization).
+For more info on localization, how it works in the Wolvic XR project, and how to correctly edit localizable text in the application, please see our [localization wiki page](https://github.com/Igalia/wolvic/wiki/Localization).
 
 ## Setup instructions
 
@@ -40,6 +38,8 @@ This repo is only available to Igalia members. If you have access to the relevan
  - `third_party/hvr/` for Huawei (should contain  `arm64-v8a`, `armeabi-v7a` and `include` folders)
  - `third_party/wavesdk/` for Vive (should contain a `build` folder, among other things)
  - `third_party/picoxr` [Pico OpenXR Mobile SDK](https://developer-global.pico-interactive.com/sdk?deviceId=1&platformId=3&itemId=11) (should contain `include` and `libs` folders, among other things that are not necessary for Wolvic)
+ - `third_party/lynx` [for Lynx](https://portal.lynx-r.com)(should contain a `loader-release.aar` file)
+ - `third_party/snapdragon-spaces` [for Snapdragon Spaces](https://spaces.qualcomm.com/)(should contain `libopenxr_loader.aar` and `qxrclients.aar` files)
  - `third_party/OpenXR-SDK/` [OpenXR-SDK](https://github.com/KhronosGroup/OpenXR-SDK) (should contain an `include` folder)
 
 The [repo in `third_party`](https://github.com/Igalia/wolvic-third-parties) can be updated like so:
@@ -63,6 +63,8 @@ You can build for different devices:
 - **`wavevr`**: VIVE Focus
 - **`picovr`**: Pico Neo
 - **`picoxr`**: Pico 4 and (untested) Pico Neo 3
+- **`lynx`**: Lynx R1
+- **`spaces`**: Lenovo A3
 
 For testing on a non-VR device:
 

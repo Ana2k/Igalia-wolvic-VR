@@ -80,8 +80,6 @@ public:
     });
   }
 
-  virtual const void* GetNextStructureInChain() const { return XR_NULL_HANDLE; };
-
   virtual void
   Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aClearSwapChain) override {
     const uint numXRLayers = GetNumXRLayers();
@@ -90,11 +88,24 @@ public:
           return XR_EYE_VISIBILITY_BOTH;
         return i == 0 ? XR_EYE_VISIBILITY_LEFT : XR_EYE_VISIBILITY_RIGHT;
     };
+
+    if (mCompositionLayerColorScaleBias != XR_NULL_HANDLE) {
+        vrb::Color tintColor = layer->GetTintColor();
+        if (!IsComposited() && (layer->GetClearColor().Alpha() > 0.0f)) {
+            tintColor = layer->GetClearColor();
+            tintColor.SetRGBA(tintColor.Red(), tintColor.Green(), tintColor.Blue(), tintColor.Alpha());
+        }
+        mCompositionLayerColorScaleBiasStruct.colorScale = {tintColor.Red(), tintColor.Green(), tintColor.Blue(), tintColor.Alpha()};
+    }
+
     for (uint i = 0; i < numXRLayers; ++i) {
       xrLayers[i].layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
       xrLayers[i].eyeVisibility = getEyeVisibility(i);
       xrLayers[i].space = aSpace;
-      xrLayers[i].next = GetNextStructureInChain();
+      xrLayers[i].next = XR_NULL_HANDLE;
+
+      if (mCompositionLayerColorScaleBias != XR_NULL_HANDLE)
+        PushNextXrStructureInChain((XrBaseInStructure&)xrLayers[i], (XrBaseInStructure&)*mCompositionLayerColorScaleBias);
     }
   }
 
@@ -179,7 +190,7 @@ public:
   }
 
 protected:
-  virtual ~OpenXRLayerBase() {}
+  virtual ~OpenXRLayerBase() { Destroy(); }
   XrSwapchainCreateInfo GetSwapChainCreateInfo(VRLayerSurface::SurfaceType aSurfaceType, uint32_t width, uint32_t height) {
     XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
     info.width = width;
@@ -218,15 +229,25 @@ protected:
     return layer->GetUseSameLayerForBothEyes() ? 1 : xrLayers.size();
   }
 
-protected:
+  void PushNextXrStructureInChain(XrBaseInStructure& baseInStructure, XrBaseInStructure& newBaseInStructure) {
+    newBaseInStructure.next = baseInStructure.next;
+    baseInStructure.next = &newBaseInStructure;
+  }
+
+  XrCompositionLayerColorScaleBiasKHR mCompositionLayerColorScaleBiasStruct {
+    .type = XR_TYPE_COMPOSITION_LAYER_COLOR_SCALE_BIAS_KHR,
+    .next = XR_NULL_HANDLE,
+  };
+  XrBaseInStructure* mCompositionLayerColorScaleBias { OpenXRExtensions::IsExtensionSupported(XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME) ? (XrBaseInStructure*)&mCompositionLayerColorScaleBiasStruct : XR_NULL_HANDLE };
+
 #if OCULUSVR \
   // Oculus OpenXR backend flips layers vertically.
-  XrCompositionLayerImageLayoutFB mLayerImageLayout {
+  XrCompositionLayerImageLayoutFB mLayerImageLayoutStruct {
     .type = XR_TYPE_COMPOSITION_LAYER_IMAGE_LAYOUT_FB,
     .next = XR_NULL_HANDLE,
     .flags = XR_COMPOSITION_LAYER_IMAGE_LAYOUT_VERTICAL_FLIP_BIT_FB
   };
-  void* nextStructureInChain { OpenXRExtensions::IsExtensionSupported(XR_FB_COMPOSITION_LAYER_IMAGE_LAYOUT_EXTENSION_NAME) ? &mLayerImageLayout : XR_NULL_HANDLE };
+  XrBaseInStructure* mLayerImageLayout { OpenXRExtensions::IsExtensionSupported(XR_FB_COMPOSITION_LAYER_IMAGE_LAYOUT_EXTENSION_NAME) ? (XrBaseInStructure*)&mLayerImageLayoutStruct : XR_NULL_HANDLE };
 #endif
 };
 
@@ -250,11 +271,18 @@ public:
     OpenXRLayerBase<T, U>::Init(aEnv, session, aContext);
   }
 
-#if OCULUSVR
-  const void* GetNextStructureInChain() const override {
-    return this->nextStructureInChain;
-  }
+  virtual void
+  Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aClearSwapChain) override {
+    OpenXRLayerBase<T , U>::Update(aSpace, aPose, aClearSwapChain);
+#ifdef OCULUSVR
+    if (this->mLayerImageLayout != XR_NULL_HANDLE) {
+      const uint numXRLayers = this->GetNumXRLayers();
+      for (uint i = 0; i < numXRLayers; ++i) {
+        this->PushNextXrStructureInChain((XrBaseInStructure&)this->xrLayers[i], (XrBaseInStructure&)*this->mLayerImageLayout);
+      }
+    }
 #endif
+  }
 
   void Resize() {
     if (!this->IsSwapChainReady()) {
@@ -385,9 +413,24 @@ public:
   void Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aClearSwapChain) override;
   void Destroy() override;
   bool IsDrawRequested() const override;
-#if OCULUSVR
-  const void* GetNextStructureInChain() const override;
-#endif
+};
+
+
+class OpenXRLayerPassthrough;
+
+typedef std::shared_ptr<OpenXRLayerPassthrough> OpenXRLayerPassthroughPtr;
+
+class OpenXRLayerPassthrough {
+  public:
+    VRLayerPassthroughPtr vrLayer;
+    XrPassthroughLayerFB xrLayer;
+
+    static OpenXRLayerPassthroughPtr
+    Create(const VRLayerPassthroughPtr& aLayer);
+    void Init(JNIEnv *aEnv, XrSession session, vrb::RenderContextPtr &aContext, const XrPassthroughFB& passthroughInstance);
+    void Update(XrSpace aSpace, const XrPosef &aPose, XrSwapchain aClearSwapChain) {};
+    void Destroy();
+    bool IsDrawRequested() { return vrLayer->IsDrawRequested(); };
 };
 
 }

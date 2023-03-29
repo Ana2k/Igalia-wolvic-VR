@@ -14,6 +14,8 @@ namespace crow {
     static void Initialize();
     static void LoadExtensions(XrInstance instance);
     static bool IsExtensionSupported(const char*);
+    static void LoadApiLayers(XrInstance instance);
+    static bool IsApiLayerSupported(const char*);
 
     static PFN_xrGetOpenGLESGraphicsRequirementsKHR sXrGetOpenGLESGraphicsRequirementsKHR;
     static PFN_xrCreateSwapchainAndroidSurfaceKHR sXrCreateSwapchainAndroidSurfaceKHR;
@@ -27,7 +29,13 @@ namespace crow {
     static PFN_xrPerfSettingsSetPerformanceLevelEXT sXrPerfSettingsSetPerformanceLevelEXT;
     static PFN_xrEnumerateDisplayRefreshRatesFB sXrEnumerateDisplayRefreshRatesFB;
     static PFN_xrRequestDisplayRefreshRateFB sXrRequestDisplayRefreshRateFB;
+
+    static PFN_xrCreatePassthroughFB sXrCreatePassthroughFB;
+    static PFN_xrDestroyPassthroughFB sXrDestroyPassthroughFB;
+    static PFN_xrCreatePassthroughLayerFB sXrCreatePassthroughLayerFB;
+    static PFN_xrDestroyPassthroughLayerFB sXrDestroyPassthroughLayerFB;
   private:
      static std::unordered_set<std::string> sSupportedExtensions;
+     static std::unordered_set<std::string> sSupportedApiLayers;
   };
 } // namespace crow
